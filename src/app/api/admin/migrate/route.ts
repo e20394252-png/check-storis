@@ -40,7 +40,7 @@ export async function POST(req: NextRequest) {
     let pushResult = 'Not attempted';
     try {
       const result = execSync(
-        `npx --yes prisma@7 db push --accept-data-loss --skip-generate`,
+        `npx --yes prisma@7 db push --accept-data-loss --url="${dbUrl}"`,
         {
           env: { ...process.env, DATABASE_URL: dbUrl },
           timeout: 60000,
