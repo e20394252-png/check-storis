@@ -1,0 +1,53 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id          String   @id @default(uuid())
+  telegram_id BigInt   @unique
+  username    String?
+  first_name  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  registration Registration?
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  date        DateTime?
+  location    String?
+  repostUrl   String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  registrations Registration[]
+}
+
+model Registration {
+  id        String             @id @default(uuid())
+  userId    String             @unique
+  eventId   String
+  status    RegistrationStatus @default(PENDING)
+  proofUrl  String?
+  adminNote String?
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+enum RegistrationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}

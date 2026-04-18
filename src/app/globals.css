@@ -1,0 +1,231 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0a1a;
+  --bg-secondary: #0f0f24;
+  --bg-card: #12122a;
+  --neon-cyan: #00e5ff;
+  --neon-purple: #b400ff;
+  --neon-pink: #ff0080;
+  --neon-green: #00ff88;
+  --neon-yellow: #ffc800;
+  --text-primary: #e0e8ff;
+  --text-muted: #6870a0;
+  --border-subtle: rgba(0, 229, 255, 0.1);
+  --border-glow: rgba(0, 229, 255, 0.35);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(0, 229, 255, 0.04) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, rgba(180, 0, 255, 0.04) 0%, transparent 60%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Color utilities */
+.neon-cyan   { color: var(--neon-cyan); }
+.neon-purple { color: var(--neon-purple); }
+.neon-pink   { color: var(--neon-pink); }
+.neon-green  { color: var(--neon-green); }
+
+/* Cyber card */
+.cyber-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cyber-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--neon-cyan), transparent);
+  opacity: 0.5;
+}
+.cyber-card:hover {
+  border-color: var(--border-glow);
+  box-shadow: 0 4px 30px rgba(0, 229, 255, 0.08);
+}
+
+/* Cyber button */
+.cyber-btn {
+  position: relative;
+  background: rgba(0, 229, 255, 0.07);
+  border: 1.5px solid var(--neon-cyan);
+  color: var(--neon-cyan);
+  border-radius: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  transition: all 0.2s;
+  overflow: hidden;
+  cursor: pointer;
+}
+.cyber-btn:hover {
+  box-shadow: 0 0 20px rgba(0, 229, 255, 0.25);
+  background: rgba(0, 229, 255, 0.12);
+}
+.cyber-btn:active { transform: scale(0.98); }
+
+/* Primary gradient button */
+.cyber-btn-primary {
+  background: linear-gradient(135deg, var(--neon-cyan), var(--neon-purple));
+  border: none;
+  color: #000;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  border-radius: 12px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.cyber-btn-primary:hover {
+  box-shadow: 0 4px 25px rgba(0, 229, 255, 0.4), 0 2px 50px rgba(180, 0, 255, 0.2);
+  transform: translateY(-1px);
+}
+.cyber-btn-primary:active { transform: scale(0.98) translateY(0); }
+.cyber-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* Approve/Reject buttons */
+.cyber-btn-approve {
+  background: linear-gradient(135deg, #00e5ff, #00ff88);
+  border: none;
+  color: #000;
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cyber-btn-approve:hover {
+  box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
+  transform: translateY(-1px);
+}
+
+.cyber-btn-reject {
+  background: rgba(255, 0, 128, 0.1);
+  border: 1px solid rgba(255, 0, 128, 0.4);
+  color: var(--neon-pink);
+  font-weight: 700;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.cyber-btn-reject:hover {
+  background: rgba(255, 0, 128, 0.18);
+  box-shadow: 0 4px 20px rgba(255, 0, 128, 0.2);
+}
+
+/* Status badges */
+.badge-pending {
+  background: rgba(255, 200, 0, 0.12);
+  border: 1px solid rgba(255, 200, 0, 0.4);
+  color: var(--neon-yellow);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+}
+.badge-approved {
+  background: rgba(0, 255, 136, 0.12);
+  border: 1px solid rgba(0, 255, 136, 0.4);
+  color: var(--neon-green);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+}
+.badge-rejected {
+  background: rgba(255, 0, 128, 0.12);
+  border: 1px solid rgba(255, 0, 128, 0.4);
+  color: var(--neon-pink);
+  border-radius: 6px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 3px 10px;
+  text-transform: uppercase;
+}
+
+/* Input */
+.cyber-input {
+  background: rgba(0, 229, 255, 0.04);
+  border: 1px solid rgba(0, 229, 255, 0.18);
+  color: var(--text-primary);
+  border-radius: 10px;
+  transition: all 0.2s;
+  outline: none;
+}
+.cyber-input:focus {
+  border-color: var(--neon-cyan);
+  box-shadow: 0 0 0 3px rgba(0, 229, 255, 0.1);
+}
+.cyber-input::placeholder { color: var(--text-muted); }
+
+/* Approved status glow banner */
+.approved-banner {
+  background: linear-gradient(135deg, rgba(0, 255, 136, 0.15), rgba(0, 229, 255, 0.1));
+  border: 1.5px solid rgba(0, 255, 136, 0.5);
+  border-radius: 16px;
+  animation: approved-pulse 2.5s ease-in-out infinite;
+}
+
+@keyframes approved-pulse {
+  0%, 100% { box-shadow: 0 0 15px rgba(0, 255, 136, 0.2); }
+  50% { box-shadow: 0 0 35px rgba(0, 255, 136, 0.4), 0 0 60px rgba(0, 229, 255, 0.15); }
+}
+
+/* Pending spinner */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }
+
+/* File upload zone */
+.upload-zone {
+  border: 2px dashed rgba(0, 229, 255, 0.3);
+  border-radius: 16px;
+  background: rgba(0, 229, 255, 0.03);
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.upload-zone:hover {
+  border-color: rgba(0, 229, 255, 0.6);
+  background: rgba(0, 229, 255, 0.06);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(0, 229, 255, 0.2); border-radius: 2px; }
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in { animation: fade-in 0.4s ease-out; }
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slide-up { animation: slide-up 0.5s ease-out; }
