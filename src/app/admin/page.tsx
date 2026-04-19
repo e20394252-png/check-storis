@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function AdminPage({
   searchParams,
 }: {
-  searchParams: Promise<{ key?: string; tab?: string; edit?: string; new?: string }>;
+  searchParams: Promise<{ key?: string; tab?: string; edit?: string; new?: string; sort?: string; dir?: string }>;
 }) {
   const params = await searchParams;
   const adminSecret = process.env.ADMIN_SECRET || 'checkStoris2026';
@@ -37,6 +37,8 @@ export default async function AdminPage({
   const activeTab = params.tab || 'pending';
   const editEventId = params.edit;
   const isCreating = params.new === '1';
+  const sortField = params.sort || 'date';
+  const sortDir = params.dir === 'asc' ? 1 : -1;
 
   const [allRegistrations, pendingRegs, events] = await Promise.all([
     prisma.registration.findMany({
@@ -54,9 +56,30 @@ export default async function AdminPage({
     }),
   ]);
 
-  const approvedRegs = allRegistrations.filter((r: any) => r.status === 'APPROVED');
-  const rejectedRegs = allRegistrations.filter((r: any) => r.status === 'REJECTED');
+  // ── Archive split: older than 7 days ──────────────────────────────────────
+  const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const recentRegs  = allRegistrations.filter((r: any) => new Date(r.createdAt) >= weekAgo);
+  const archiveRegs = allRegistrations.filter((r: any) => new Date(r.createdAt) < weekAgo);
+  const approvedRegs = recentRegs.filter((r: any) => r.status === 'APPROVED');
+  const rejectedRegs = recentRegs.filter((r: any) => r.status === 'REJECTED');
   const editEvent = editEventId ? events.find((e: any) => e.id === editEventId) : null;
+
+  // ── Sorting helper ────────────────────────────────────────────────────────
+  function sortRegs(regs: any[]): any[] {
+    return [...regs].sort((a, b) => {
+      let av: any, bv: any;
+      switch (sortField) {
+        case 'name':      av = a.user?.first_name || ''; bv = b.user?.first_name || ''; return sortDir * av.localeCompare(bv);
+        case 'username':  av = a.user?.username || '';   bv = b.user?.username || '';   return sortDir * av.localeCompare(bv);
+        case 'event':     av = a.event?.title || '';     bv = b.event?.title || '';     return sortDir * av.localeCompare(bv);
+        case 'status':    av = a.status;                 bv = b.status;                 return sortDir * av.localeCompare(bv);
+        case 'updated':   return sortDir * (new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime());
+        default:          return sortDir * (new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      }
+    });
+  }
+
+  // ── Server Actions ────────────────────────────────────────────────────────
 
   async function reviewRegistration(formData: FormData) {
     'use server';
@@ -117,9 +140,9 @@ export default async function AdminPage({
     redirect(`/admin?key=${_key}&tab=events`);
   }
 
+  // ── Styles ────────────────────────────────────────────────────────────────
   const bg = '#050510'; const card = '#0d0d24'; const cyan = '#00e5ff'; const purple = '#b400ff';
   const green = '#00ff88'; const pink = '#ff0080'; const yellow = '#ffc800'; const muted = '#6870a0';
-  const th = { padding: '12px 16px', textAlign: 'left' as const, fontWeight: 600, color: muted, letterSpacing: '0.04em', fontSize: 11, textTransform: 'uppercase' as const };
   const td = { padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)', fontSize: 13 };
   const inp: React.CSSProperties = { width: '100%', padding: '10px 14px', background: 'rgba(0,229,255,0.05)', border: '1px solid rgba(0,229,255,0.15)', borderRadius: 8, color: '#e0e8ff', fontSize: 14, outline: 'none' };
   const statusColors: Record<string, { color: string; label: string }> = {
@@ -128,21 +151,41 @@ export default async function AdminPage({
     REJECTED: { color: pink, label: 'Отклонён' },
   };
 
-  const tabBtn = (id: string, label: string, count?: number) => (
-    <a key={id} href={`/admin?key=${key}&tab=${id}`} style={{
-      padding: '9px 18px', fontSize: 13, fontWeight: 600, borderRadius: 8,
-      background: activeTab === id ? 'rgba(0,229,255,0.1)' : 'transparent',
-      border: activeTab === id ? '1px solid rgba(0,229,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
-      color: activeTab === id ? cyan : muted, textDecoration: 'none',
-      display: 'inline-flex', gap: 8, alignItems: 'center',
-    }}>
-      {label}
-      {count !== undefined && <span style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '1px 7px', fontSize: 11 }}>{count}</span>}
-    </a>
-  );
+  // Tab button — preserves sort state
+  const tabBtn = (id: string, label: string, count?: number) => {
+    const href = `/admin?key=${key}&tab=${id}${sortField !== 'date' ? `&sort=${sortField}&dir=${params.dir || 'desc'}` : ''}`;
+    return (
+      <a key={id} href={href} style={{
+        padding: '9px 18px', fontSize: 13, fontWeight: 600, borderRadius: 8,
+        background: activeTab === id ? 'rgba(0,229,255,0.1)' : 'transparent',
+        border: activeTab === id ? '1px solid rgba(0,229,255,0.4)' : '1px solid rgba(255,255,255,0.08)',
+        color: activeTab === id ? cyan : muted, textDecoration: 'none',
+        display: 'inline-flex', gap: 8, alignItems: 'center',
+      }}>
+        {label}
+        {count !== undefined && <span style={{ background: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: '1px 7px', fontSize: 11 }}>{count}</span>}
+      </a>
+    );
+  };
+
+  // Sort column header
+  const SortTh = ({ field, label, colSpan }: { field: string; label: string; colSpan?: number }) => {
+    const isActive = sortField === field;
+    const newDir = isActive && sortDir === -1 ? 'asc' : 'desc';
+    const arrow = isActive ? (sortDir === -1 ? ' ↓' : ' ↑') : ' ⇅';
+    return (
+      <th colSpan={colSpan} style={{ padding: '12px 16px', textAlign: 'left', fontWeight: 600, letterSpacing: '0.04em', fontSize: 11, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+        <a href={`/admin?key=${key}&tab=${activeTab}&sort=${field}&dir=${newDir}`}
+          style={{ color: isActive ? cyan : muted, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+          {label}<span style={{ opacity: isActive ? 1 : 0.4, fontSize: 10 }}>{arrow}</span>
+        </a>
+      </th>
+    );
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: bg, color: '#e0e8ff', fontFamily: 'Inter, sans-serif' }}>
+      {/* Header */}
       <div style={{ padding: '18px 28px', borderBottom: '1px solid rgba(0,229,255,0.12)', background: 'rgba(5,5,20,0.98)', display: 'flex', alignItems: 'center', gap: 16 }}>
         <div>
           <div style={{ fontSize: 10, color: cyan, letterSpacing: '0.1em', opacity: 0.6 }}>// CHECK-STORIS_ADMIN</div>
@@ -160,29 +203,32 @@ export default async function AdminPage({
         </div>
       </div>
 
+      {/* Tabs */}
       <div style={{ padding: '14px 28px', borderBottom: '1px solid rgba(0,229,255,0.08)', display: 'flex', gap: 8, flexWrap: 'wrap' }}>
         {tabBtn('stats', '📊 Дашборд')}
         {tabBtn('pending', '🔍 На проверке', pendingRegs.length)}
-        {tabBtn('all', '📋 Все заявки', allRegistrations.length)}
+        {tabBtn('all', '📋 Все заявки', recentRegs.length)}
         {tabBtn('approved', '✅ Одобренные', approvedRegs.length)}
         {tabBtn('rejected', '❌ Отклонённые', rejectedRegs.length)}
+        {tabBtn('archive', '🗂 Архив', archiveRegs.length)}
         {tabBtn('events', '⚙️ Мероприятия', events.length)}
       </div>
 
       <div style={{ padding: '24px 28px' }}>
 
-        {/* STATS */}
+        {/* ── STATS ──────────────────────────────────────────────────────── */}
         {activeTab === 'stats' && (() => {
           const stats = [
             { label: 'Всего заявок', value: allRegistrations.length, color: cyan },
-            { label: 'На проверке', value: pendingRegs.length, color: yellow },
-            { label: 'Одобрено', value: approvedRegs.length, color: green },
-            { label: 'Отклонено', value: rejectedRegs.length, color: pink },
+            { label: 'На проверке',  value: pendingRegs.length,      color: yellow },
+            { label: 'Одобрено',     value: approvedRegs.length,     color: green },
+            { label: 'Отклонено',    value: rejectedRegs.length,     color: pink },
+            { label: 'В архиве',     value: archiveRegs.length,      color: muted },
           ];
           return (
             <div>
               <div style={{ fontSize: 10, color: purple, letterSpacing: '0.1em', marginBottom: 20 }}>// DASHBOARD_STATS</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: 16, marginBottom: 32 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(165px, 1fr))', gap: 16, marginBottom: 32 }}>
                 {stats.map(s => (
                   <div key={s.label} style={{ background: card, border: '1px solid rgba(0,229,255,0.12)', borderRadius: 12, padding: 20 }}>
                     <div style={{ fontSize: 32, fontWeight: 800, fontFamily: 'monospace', color: s.color }}>{s.value}</div>
@@ -208,7 +254,7 @@ export default async function AdminPage({
           );
         })()}
 
-        {/* PENDING */}
+        {/* ── PENDING ─────────────────────────────────────────────────────── */}
         {activeTab === 'pending' && (
           <div>
             <div style={{ fontSize: 10, color: purple, letterSpacing: '0.1em', marginBottom: 20 }}>// НА_ПРОВЕРКЕ ({pendingRegs.length})</div>
@@ -264,21 +310,30 @@ export default async function AdminPage({
           </div>
         )}
 
-        {/* ALL */}
+        {/* ── ALL (recent only) ────────────────────────────────────────────── */}
         {activeTab === 'all' && (
           <div>
-            <div style={{ fontSize: 10, color: purple, letterSpacing: '0.1em', marginBottom: 20 }}>// ВСЕ_ЗАЯВКИ ({allRegistrations.length})</div>
+            <div style={{ fontSize: 10, color: purple, letterSpacing: '0.1em', marginBottom: 8 }}>
+              // ВСЕ_ЗАЯВКИ ({recentRegs.length}) — последние 7 дней
+            </div>
+            <div style={{ fontSize: 11, color: muted, marginBottom: 18 }}>
+              Старые заявки → <a href={`/admin?key=${key}&tab=archive`} style={{ color: cyan, textDecoration: 'none' }}>🗂 Архив ({archiveRegs.length})</a>
+            </div>
             <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(0,229,255,0.12)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'rgba(0,229,255,0.03)', borderBottom: '1px solid rgba(0,229,255,0.1)' }}>
-                    {['Имя', '@username', 'Мероприятие', 'Дата подачи', 'Статус'].map(h => <th key={h} style={th}>{h}</th>)}
+                    <SortTh field="name"     label="Имя" />
+                    <SortTh field="username" label="@username" />
+                    <SortTh field="event"    label="Мероприятие" />
+                    <SortTh field="date"     label="Дата подачи" />
+                    <SortTh field="status"   label="Статус" />
                   </tr>
                 </thead>
                 <tbody>
-                  {allRegistrations.length === 0 ? (
-                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: muted }}>Нет заявок</td></tr>
-                  ) : allRegistrations.map((r: any) => {
+                  {recentRegs.length === 0 ? (
+                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: muted }}>Нет заявок за последние 7 дней</td></tr>
+                  ) : sortRegs(recentRegs).map((r: any) => {
                     const sc = statusColors[r.status] || { color: muted, label: r.status };
                     return (
                       <tr key={r.id}>
@@ -296,7 +351,7 @@ export default async function AdminPage({
           </div>
         )}
 
-        {/* APPROVED */}
+        {/* ── APPROVED ─────────────────────────────────────────────────────── */}
         {activeTab === 'approved' && (
           <div>
             <div style={{ fontSize: 10, color: green, letterSpacing: '0.1em', marginBottom: 20 }}>// ОДОБРЕННЫЕ ({approvedRegs.length})</div>
@@ -304,13 +359,16 @@ export default async function AdminPage({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'rgba(0,255,136,0.03)', borderBottom: '1px solid rgba(0,255,136,0.1)' }}>
-                    {['Имя', '@username', 'Мероприятие', 'Дата одобрения'].map(h => <th key={h} style={th}>{h}</th>)}
+                    <SortTh field="name"     label="Имя" />
+                    <SortTh field="username" label="@username" />
+                    <SortTh field="event"    label="Мероприятие" />
+                    <SortTh field="updated"  label="Дата одобрения" />
                   </tr>
                 </thead>
                 <tbody>
                   {approvedRegs.length === 0 ? (
                     <tr><td colSpan={4} style={{ padding: 48, textAlign: 'center', color: muted }}>Нет одобренных</td></tr>
-                  ) : approvedRegs.map((r: any) => (
+                  ) : sortRegs(approvedRegs).map((r: any) => (
                     <tr key={r.id}>
                       <td style={{ ...td, fontWeight: 600, color: green }}>{r.user?.first_name || '—'}</td>
                       <td style={{ ...td, color: muted }}>{r.user?.username ? `@${r.user.username}` : '—'}</td>
@@ -324,7 +382,7 @@ export default async function AdminPage({
           </div>
         )}
 
-        {/* REJECTED */}
+        {/* ── REJECTED ─────────────────────────────────────────────────────── */}
         {activeTab === 'rejected' && (
           <div>
             <div style={{ fontSize: 10, color: pink, letterSpacing: '0.1em', marginBottom: 20 }}>// ОТКЛОНЁННЫЕ ({rejectedRegs.length})</div>
@@ -332,18 +390,23 @@ export default async function AdminPage({
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                 <thead>
                   <tr style={{ background: 'rgba(255,0,128,0.03)', borderBottom: '1px solid rgba(255,0,128,0.1)' }}>
-                    {['Имя', '@username', 'Причина', 'Дата'].map(h => <th key={h} style={th}>{h}</th>)}
+                    <SortTh field="name"     label="Имя" />
+                    <SortTh field="username" label="@username" />
+                    <SortTh field="event"    label="Мероприятие" />
+                    <SortTh field="updated"  label="Дата" />
+                    <SortTh field="status"   label="Причина" />
                   </tr>
                 </thead>
                 <tbody>
                   {rejectedRegs.length === 0 ? (
-                    <tr><td colSpan={4} style={{ padding: 48, textAlign: 'center', color: muted }}>Нет отклонённых</td></tr>
-                  ) : rejectedRegs.map((r: any) => (
+                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: muted }}>Нет отклонённых</td></tr>
+                  ) : sortRegs(rejectedRegs).map((r: any) => (
                     <tr key={r.id}>
                       <td style={{ ...td, fontWeight: 600 }}>{r.user?.first_name || '—'}</td>
                       <td style={{ ...td, color: muted }}>{r.user?.username ? `@${r.user.username}` : '—'}</td>
-                      <td style={{ ...td, color: muted, fontSize: 11 }}>{r.adminNote || '—'}</td>
+                      <td style={{ ...td, color: cyan, fontSize: 12 }}>{r.event?.title || '—'}</td>
                       <td style={{ ...td, color: muted, fontSize: 11 }}>{new Date(r.updatedAt).toLocaleString('ru-RU')}</td>
+                      <td style={{ ...td, color: muted, fontSize: 11 }}>{r.adminNote || '—'}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -352,11 +415,51 @@ export default async function AdminPage({
           </div>
         )}
 
-        {/* EVENTS */}
+        {/* ── ARCHIVE ──────────────────────────────────────────────────────── */}
+        {activeTab === 'archive' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 8 }}>
+              <div style={{ fontSize: 10, color: muted, letterSpacing: '0.1em' }}>// АРХИВ ({archiveRegs.length}) — старше 7 дней</div>
+            </div>
+            <div style={{ fontSize: 11, color: muted, marginBottom: 18 }}>
+              Заявки поданные более 7 дней назад. Они не отображаются в основных вкладках.
+            </div>
+            <div style={{ overflowX: 'auto', borderRadius: 12, border: '1px solid rgba(255,255,255,0.07)' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                    <SortTh field="name"     label="Имя" />
+                    <SortTh field="username" label="@username" />
+                    <SortTh field="event"    label="Мероприятие" />
+                    <SortTh field="date"     label="Дата подачи" />
+                    <SortTh field="status"   label="Статус" />
+                  </tr>
+                </thead>
+                <tbody>
+                  {archiveRegs.length === 0 ? (
+                    <tr><td colSpan={5} style={{ padding: 48, textAlign: 'center', color: muted }}>Архив пуст</td></tr>
+                  ) : sortRegs(archiveRegs).map((r: any) => {
+                    const sc = statusColors[r.status] || { color: muted, label: r.status };
+                    return (
+                      <tr key={r.id} style={{ opacity: 0.65 }}>
+                        <td style={{ ...td, fontWeight: 600 }}>{r.user?.first_name || '—'}</td>
+                        <td style={{ ...td, color: muted }}>{r.user?.username ? `@${r.user.username}` : '—'}</td>
+                        <td style={{ ...td, color: cyan, fontSize: 12 }}>{r.event?.title || '—'}</td>
+                        <td style={{ ...td, color: muted, fontSize: 11 }}>{new Date(r.createdAt).toLocaleString('ru-RU')}</td>
+                        <td style={td}><span style={{ fontSize: 11, fontWeight: 700, color: sc.color }}>{sc.label}</span></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* ── EVENTS ───────────────────────────────────────────────────────── */}
         {activeTab === 'events' && (
           <div>
             {(editEvent || isCreating) ? (
-              /* Edit / Create form */
               <div style={{ background: card, border: '1px solid rgba(0,229,255,0.15)', borderRadius: 14, padding: 24 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <div style={{ fontSize: 10, color: purple, letterSpacing: '0.1em' }}>
@@ -415,7 +518,6 @@ export default async function AdminPage({
                 </form>
               </div>
             ) : (
-              /* Events list */
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                   <div style={{ fontSize: 10, color: purple, letterSpacing: '0.1em' }}>// МЕРОПРИЯТИЯ ({events.length})</div>
