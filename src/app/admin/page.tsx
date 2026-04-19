@@ -4,7 +4,7 @@ import { redirect } from 'next/navigation';
 import { notifyRegistrationApproved, notifyRegistrationRejected } from '@/lib/notify';
 import PendingButton from '@/components/PendingButton';
 import EventPushButton from '@/components/EventPushButton';
-import SortableTable, { type RegRow } from '@/components/SortableTable';
+import RegistrationsTable, { type RegRow } from '@/components/SortableTable';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,22 +155,6 @@ export default async function AdminPage({
     </a>
   );
 
-  // ── Column definitions (reused across tabs) ────────────────────────────────
-  const colName    = { key: 'name',      label: 'Имя',         getValue: (r: RegRow) => r.user.first_name || '',  render: (r: RegRow) => <b style={{ fontWeight: 600 }}>{r.user.first_name || '—'}</b> };
-  const colUser    = { key: 'username',   label: '@username',   getValue: (r: RegRow) => r.user.username || '',    render: (r: RegRow) => <span style={{ color: muted }}>{r.user.username ? `@${r.user.username}` : '—'}</span> };
-  const colEvent   = { key: 'event',      label: 'Мероприятие', getValue: (r: RegRow) => r.event.title || '',     render: (r: RegRow) => <span style={{ color: cyan, fontSize: 12 }}>{r.event.title || '—'}</span> };
-  const colDate    = { key: 'createdAt',  label: 'Дата подачи', getValue: (r: RegRow) => r.createdAt,             render: (r: RegRow) => <span style={{ color: muted, fontSize: 11 }}>{new Date(r.createdAt).toLocaleString('ru-RU')}</span> };
-  const colUpdated = { key: 'updatedAt',  label: 'Дата',        getValue: (r: RegRow) => r.updatedAt,             render: (r: RegRow) => <span style={{ color: muted, fontSize: 11 }}>{new Date(r.updatedAt).toLocaleString('ru-RU')}</span> };
-  const colStatus  = { key: 'status',     label: 'Статус',      getValue: (r: RegRow) => r.status,
-    render: (r: RegRow) => {
-      const c = r.status === 'APPROVED' ? green : r.status === 'REJECTED' ? pink : yellow;
-      const l = r.status === 'APPROVED' ? 'Одобрен' : r.status === 'REJECTED' ? 'Отклонён' : 'На проверке';
-      return <span style={{ fontSize: 11, fontWeight: 700, color: c }}>{l}</span>;
-    }
-  };
-  const colNote = { key: 'adminNote', label: 'Причина', getValue: (r: RegRow) => r.adminNote || '', render: (r: RegRow) => <span style={{ color: muted, fontSize: 11 }}>{r.adminNote || '—'}</span> };
-  const colApprovedName = { ...colName, render: (r: RegRow) => <b style={{ fontWeight: 600, color: green }}>{r.user.first_name || '—'}</b> };
-
   return (
     <div style={{ minHeight: '100vh', background: bg, color: '#e0e8ff', fontFamily: 'Inter, sans-serif' }}>
       {/* Header */}
@@ -307,14 +291,7 @@ export default async function AdminPage({
             <div style={{ fontSize: 11, color: muted, marginBottom: 18 }}>
               Старые заявки → <a href={`/admin?key=${key}&tab=archive`} style={{ color: cyan, textDecoration: 'none' }}>🗂 Архив ({archiveRegs.length})</a>
             </div>
-            <SortableTable
-              rows={allSer}
-              columns={[colName, colUser, colEvent, colDate, colStatus]}
-              emptyMessage="Нет заявок за последние 7 дней"
-              borderColor="rgba(0,229,255,0.12)"
-              headerBg="rgba(0,229,255,0.03)"
-              defaultSort="createdAt"
-            />
+            <RegistrationsTable rows={allSer} tableType="all" emptyMessage="Нет заявок за последние 7 дней" />
           </div>
         )}
 
@@ -322,14 +299,7 @@ export default async function AdminPage({
         {activeTab === 'approved' && (
           <div>
             <div style={{ fontSize: 10, color: green, letterSpacing: '0.1em', marginBottom: 20 }}>// ОДОБРЕННЫЕ ({approvedRegs.length})</div>
-            <SortableTable
-              rows={approvedSer}
-              columns={[colApprovedName, colUser, colEvent, colUpdated]}
-              emptyMessage="Нет одобренных"
-              borderColor="rgba(0,255,136,0.15)"
-              headerBg="rgba(0,255,136,0.03)"
-              defaultSort="updatedAt"
-            />
+            <RegistrationsTable rows={approvedSer} tableType="approved" emptyMessage="Нет одобренных" />
           </div>
         )}
 
@@ -337,14 +307,7 @@ export default async function AdminPage({
         {activeTab === 'rejected' && (
           <div>
             <div style={{ fontSize: 10, color: pink, letterSpacing: '0.1em', marginBottom: 20 }}>// ОТКЛОНЁННЫЕ ({rejectedRegs.length})</div>
-            <SortableTable
-              rows={rejectedSer}
-              columns={[colName, colUser, colEvent, colUpdated, colNote]}
-              emptyMessage="Нет отклонённых"
-              borderColor="rgba(255,0,128,0.15)"
-              headerBg="rgba(255,0,128,0.03)"
-              defaultSort="updatedAt"
-            />
+            <RegistrationsTable rows={rejectedSer} tableType="rejected" emptyMessage="Нет отклонённых" />
           </div>
         )}
 
@@ -357,15 +320,7 @@ export default async function AdminPage({
             <div style={{ fontSize: 11, color: muted, marginBottom: 18 }}>
               Заявки поданные более 7 дней назад. Не отображаются в основных вкладках.
             </div>
-            <SortableTable
-              rows={archiveSer}
-              columns={[colName, colUser, colEvent, colDate, colStatus]}
-              emptyMessage="Архив пуст"
-              borderColor="rgba(255,255,255,0.07)"
-              headerBg="rgba(255,255,255,0.02)"
-              rowOpacity={0.65}
-              defaultSort="createdAt"
-            />
+            <RegistrationsTable rows={archiveSer} tableType="archive" emptyMessage="Архив пуст" />
           </div>
         )}
 
