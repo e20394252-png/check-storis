@@ -4,7 +4,11 @@ import { notifyRegistrationApproved, notifyRegistrationRejected } from '@/lib/no
 
 export const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'dummy_token');
 
-const APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://check-storis.onrender.com';
+const APP_URL =
+  process.env.NEXT_PUBLIC_MINI_APP_URL ||
+  (process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : 'https://check-storis-production-673a.up.railway.app');
 
 // ── /start handler ─────────────────────────────────────────────────────────
 bot.start(async (ctx) => {

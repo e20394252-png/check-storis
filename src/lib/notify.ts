@@ -4,7 +4,11 @@
  */
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL || 'https://check-storis.onrender.com';
+const APP_URL =
+  process.env.NEXT_PUBLIC_MINI_APP_URL ||
+  (process.env.RAILWAY_PUBLIC_DOMAIN
+    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+    : 'https://check-storis-production-673a.up.railway.app');
 
 async function sendMessage(chatId: string | number | bigint, text: string, extra?: object) {
   if (!BOT_TOKEN) {
@@ -35,35 +39,31 @@ async function sendPhoto(
   chatId: string | number | bigint,
   base64Image: string,
   caption: string,
-  extra?: object
+  replyMarkup: object
 ) {
-  if (!BOT_TOKEN) return;
+  if (!BOT_TOKEN) return false;
   try {
     const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
-    const blob = new Blob([buffer], { type: 'image/jpeg' });
-    const form = new FormData();
-    form.append('chat_id', chatId.toString());
-    form.append('photo', blob, 'screenshot.jpg');
-    form.append('caption', caption);
-    form.append('parse_mode', 'HTML');
-    if (extra) {
-      Object.entries(extra).forEach(([k, v]) =>
-        form.append(k, typeof v === 'string' ? v : JSON.stringify(v))
-      );
-    }
-    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-      method: 'POST',
-      body: form,
-    });
-    if (!res.ok) {
-      const err = await res.text();
-      console.error('[notify] sendPhoto error:', err);
-    }
+
+    // Use Telegraf's telegram helper — handles multipart correctly
+    const { bot } = await import('@/lib/bot');
+    await bot.telegram.sendPhoto(
+      chatId.toString(),
+      { source: buffer },
+      {
+        caption,
+        parse_mode: 'HTML',
+        reply_markup: replyMarkup as any,
+      }
+    );
+    return true;
   } catch (err) {
-    console.error('[notify] Failed to send photo:', err);
+    console.error('[notify] sendPhoto failed, will send text fallback:', err);
+    return false;
   }
 }
+
 
 const openAppButton = {
   reply_markup: JSON.stringify({
