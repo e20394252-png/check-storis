@@ -92,7 +92,7 @@ export default async function AdminPage({
     const eventId = formData.get('eventId') as string;
     const dateStr = formData.get('date') as string;
     const date = dateStr ? new Date(dateStr) : null;
-    const isActive = formData.get('isActive') === 'true';
+    const isActive = formData.getAll('isActive').includes('true');
     if (eventId) {
       await prismaInner.event.update({
         where: { id: eventId },
