@@ -15,7 +15,7 @@ model User {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  registration Registration?
+  registrations Registration[]
 }
 
 model Event {
@@ -34,7 +34,7 @@ model Event {
 
 model Registration {
   id        String             @id @default(uuid())
-  userId    String             @unique
+  userId    String
   eventId   String
   status    RegistrationStatus @default(PENDING)
   proofUrl  String?
@@ -44,6 +44,8 @@ model Registration {
 
   user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
   event Event @relation(fields: [eventId], references: [id])
+
+  @@unique([userId, eventId])
 }
 
 enum RegistrationStatus {

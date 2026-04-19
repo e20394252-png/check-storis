@@ -20,40 +20,46 @@ export async function GET(req: NextRequest) {
 
     const prisma = getPrisma();
 
-    // Get active event
-    const event = await prisma.event.findFirst({ where: { isActive: true } });
+    // Get all active events
+    const events = await prisma.event.findMany({
+      where: { isActive: true },
+      orderBy: { date: 'asc' },
+    });
 
-    // Find user
+    // Find user with all their registrations
     const user = await prisma.user.findUnique({
       where: { telegram_id: BigInt(tgUser.id) },
       include: {
-        registration: true,
+        registrations: true,
       },
     });
+
+    // Build a map of eventId -> registration status
+    const registrationMap: Record<string, { status: string; createdAt: Date; adminNote?: string | null }> = {};
+    if (user?.registrations) {
+      for (const reg of user.registrations) {
+        registrationMap[reg.eventId] = {
+          status: reg.status.toLowerCase(),
+          createdAt: reg.createdAt,
+          adminNote: reg.adminNote,
+        };
+      }
+    }
 
     return NextResponse.json({
       user: {
         first_name: tgUser.first_name || null,
         username: tgUser.username || null,
       },
-      registration: user?.registration
-        ? {
-            status: user.registration.status.toLowerCase(),
-            eventId: user.registration.eventId,
-            createdAt: user.registration.createdAt,
-            adminNote: user.registration.adminNote,
-          }
-        : null,
-      event: event
-        ? {
-            id: event.id,
-            title: event.title,
-            description: event.description,
-            date: event.date,
-            location: event.location,
-            repostUrl: event.repostUrl,
-          }
-        : null,
+      events: events.map(ev => ({
+        id: ev.id,
+        title: ev.title,
+        description: ev.description,
+        date: ev.date,
+        location: ev.location,
+        repostUrl: ev.repostUrl,
+        registration: registrationMap[ev.id] || null,
+      })),
     });
   } catch (err) {
     console.error('[api/me] Error:', err);

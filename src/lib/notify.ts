@@ -162,3 +162,42 @@ export async function notifyAdminNewRegistration(
   }));
 }
 
+/** Broadcast event announcement to list of users via bot */
+export async function broadcastEventPush(
+  event: { id: string; title: string; description?: string | null; date?: Date | null; location?: string | null; repostUrl?: string | null },
+  telegramIds: bigint[]
+): Promise<{ sent: number; failed: number }> {
+  const dateStr = event.date
+    ? new Date(event.date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })
+    : null;
+
+  const text =
+    `📣 <b>${event.title}</b>\n\n` +
+    (event.description ? `${event.description}\n\n` : '') +
+    (dateStr ? `📅 <b>Дата:</b> ${dateStr}\n` : '') +
+    (event.location ? `📍 <b>Место:</b> ${event.location}\n` : '') +
+    (event.repostUrl ? `\n🔗 <a href="${event.repostUrl}">Открыть публикацию для репоста</a>\n` : '') +
+    `\nНажми кнопку ниже чтобы зарегистрироваться!`;
+
+  const replyMarkup = JSON.stringify({
+    inline_keyboard: [[{ text: '📱 Зарегистрироваться', web_app: { url: APP_URL } }]],
+  });
+
+  let sent = 0;
+  let failed = 0;
+
+  for (const telegramId of telegramIds) {
+    try {
+      await sendMessage(telegramId, text, {
+        reply_markup: replyMarkup,
+        disable_web_page_preview: true,
+      });
+      sent++;
+      await new Promise(r => setTimeout(r, 50)); // ~20 msg/sec — Telegram rate limit
+    } catch {
+      failed++;
+    }
+  }
+
+  return { sent, failed };
+}

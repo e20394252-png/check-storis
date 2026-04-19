@@ -57,8 +57,10 @@ export async function POST(req: NextRequest) {
       ? proofBase64
       : `data:image/jpeg;base64,${proofBase64}`;
 
-    // 6. Upsert registration
-    const existing = await prisma.registration.findUnique({ where: { userId: user.id } });
+    // 6. Upsert registration by userId+eventId (compound unique)
+    const existing = await prisma.registration.findUnique({
+      where: { userId_eventId: { userId: user.id, eventId } },
+    });
 
     let registration;
     if (existing) {
@@ -69,7 +71,6 @@ export async function POST(req: NextRequest) {
           proofUrl,
           status: 'PENDING',
           adminNote: null,
-          eventId,
         },
       });
     } else {

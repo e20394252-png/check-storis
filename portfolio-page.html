@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Check-Storis — Portfolio Case Study</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Playfair+Display:wght@700;800;900&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    background: #0c0c0f;
+  }
+
+  .page {
+    width: 210mm;
+    height: 297mm;
+    background: #0c0c0f;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* ─── HERO ─── */
+  .hero {
+    position: relative;
+    height: 118mm;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+
+  .hero-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center 30%;
+    display: block;
+  }
+
+  /* Dark gradient overlay on photo */
+  .hero-overlay {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      to bottom,
+      rgba(12,12,15,0.15) 0%,
+      rgba(12,12,15,0.0) 30%,
+      rgba(12,12,15,0.5) 70%,
+      rgba(12,12,15,1) 100%
+    );
+  }
+
+  /* Top bar — category + year */
+  .hero-topbar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 18px 28px;
+    z-index: 2;
+  }
+
+  .hero-cat {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.55);
+  }
+
+  .hero-year {
+    font-size: 9px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.4);
+    letter-spacing: 0.08em;
+  }
+
+  /* Title at bottom of hero */
+  .hero-title-block {
+    position: absolute;
+    bottom: 20px;
+    left: 28px;
+    right: 28px;
+    z-index: 2;
+  }
+
+  .hero-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 54px;
+    font-weight: 900;
+    line-height: 0.95;
+    letter-spacing: -0.02em;
+    color: #ffffff;
+    text-shadow: 0 2px 40px rgba(0,0,0,0.5);
+  }
+
+  .hero-title em {
+    font-style: italic;
+    color: #c4b5fd;
+  }
+
+  .hero-tagline {
+    margin-top: 8px;
+    font-size: 11.5px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.55);
+    letter-spacing: 0.01em;
+    max-width: 380px;
+    line-height: 1.5;
+  }
+
+  /* ─── DIVIDER METRICS ─── */
+  .metrics-strip {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+    flex-shrink: 0;
+  }
+
+  .metric-cell {
+    flex: 1;
+    padding: 16px 0;
+    text-align: center;
+    border-right: 1px solid rgba(255,255,255,0.07);
+  }
+  .metric-cell:last-child { border-right: none; }
+
+  .metric-number {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin-bottom: 5px;
+  }
+
+  .metric-number.cyan  { color: #67e8f9; }
+  .metric-number.violet { color: #c4b5fd; }
+  .metric-number.rose  { color: #fda4af; }
+
+  .metric-desc {
+    font-size: 8.5px;
+    color: rgba(255,255,255,0.35);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    line-height: 1.4;
+  }
+
+  /* ─── BODY ─── */
+  .body {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 0;
+    padding: 26px 28px 0;
+    min-height: 0;
+  }
+
+  /* LEFT */
+  .col-left { padding-right: 24px; border-right: 1px solid rgba(255,255,255,0.06); }
+
+  .section-eyebrow {
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #c4b5fd;
+    margin-bottom: 10px;
+  }
+
+  .section-heading {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-weight: 700;
+    color: #f1f5f9;
+    line-height: 1.2;
+    margin-bottom: 12px;
+  }
+
+  .body-text {
+    font-size: 11px;
+    color: rgba(255,255,255,0.45);
+    line-height: 1.85;
+    margin-bottom: 22px;
+  }
+
+  .body-text strong {
+    color: rgba(255,255,255,0.75);
+    font-weight: 600;
+  }
+
+  .separator {
+    width: 32px;
+    height: 1px;
+    background: rgba(255,255,255,0.15);
+    margin-bottom: 22px;
+  }
+
+  /* Flow steps */
+  .steps {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 11px;
+  }
+
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .step-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: #c4b5fd;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+
+  .step-body {
+    font-size: 10.5px;
+    color: rgba(255,255,255,0.4);
+    line-height: 1.6;
+  }
+
+  .step-body strong { color: rgba(255,255,255,0.7); font-weight: 600; }
+
+  /* RIGHT */
+  .col-right { padding-left: 24px; }
+
+  /* Mini "screen" mockup */
+  .screen-card {
+    background: #161620;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 16px;
+  }
+
+  .screen-topbar {
+    background: #1e1e2e;
+    padding: 7px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; }
+  .dot.y { background: #ffbd2e; }
+  .dot.g { background: #28ca41; }
+
+  .screen-label {
+    font-size: 8.5px;
+    color: rgba(255,255,255,0.25);
+    margin-left: 4px;
+    font-family: 'Inter', monospace;
+    letter-spacing: 0.04em;
+  }
+
+  .screen-body {
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* Phone mockups inside screen */
+  .phone-mock {
+    background: #0e0e1a;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+    overflow: hidden;
+  }
+
+  .phone-header {
+    background: #1a1a2e;
+    padding: 6px 8px;
+    font-size: 7px;
+    color: #c4b5fd;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+  }
+
+  .phone-content { padding: 8px; }
+
+  .p-title { font-size: 8px; font-weight: 700; color: #f1f5f9; margin-bottom: 3px; }
+  .p-sub   { font-size: 6.5px; color: rgba(255,255,255,0.3); margin-bottom: 7px; }
+
+  .p-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(52,211,153,0.1);
+    border: 1px solid rgba(52,211,153,0.3);
+    border-radius: 20px;
+    padding: 2px 6px;
+    font-size: 6.5px;
+    color: #34d399;
+    font-weight: 700;
+    margin-bottom: 7px;
+  }
+
+  .p-upload {
+    background: rgba(196,181,253,0.06);
+    border: 1px dashed rgba(196,181,253,0.25);
+    border-radius: 5px;
+    padding: 6px;
+    text-align: center;
+    font-size: 6px;
+    color: rgba(196,181,253,0.5);
+  }
+
+  /* Bot mock */
+  .tg-photo-box {
+    background: linear-gradient(135deg, #1a2040, #2a1040);
+    border-radius: 6px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 6.5px;
+    color: rgba(255,255,255,0.3);
+    margin-bottom: 5px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .tg-bubble {
+    background: #1e2040;
+    border-radius: 5px 5px 5px 1px;
+    padding: 5px 7px;
+    margin-bottom: 4px;
+    font-size: 6.5px;
+    color: rgba(255,255,255,0.5);
+    line-height: 1.5;
+  }
+
+  .tg-bubble strong { color: #67e8f9; font-size: 7px; display: block; margin-bottom: 1px; }
+
+  .tg-btns {
+    display: flex;
+    gap: 4px;
+  }
+
+  .tg-btn {
+    flex: 1;
+    text-align: center;
+    padding: 3px 4px;
+    border-radius: 4px;
+    font-size: 6.5px;
+    font-weight: 700;
+  }
+
+  .tg-btn.ok { background: rgba(52,211,153,0.12); color: #34d399; border: 1px solid rgba(52,211,153,0.25); }
+  .tg-btn.no { background: rgba(248,113,113,0.1); color: #f87171; border: 1px solid rgba(248,113,113,0.2); }
+
+  /* Tags */
+  .tags-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+
+  .tag {
+    font-size: 8px;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.04em;
+    font-family: 'Inter', monospace;
+  }
+
+  /* Role block */
+  .role-block {
+    background: rgba(196,181,253,0.04);
+    border-left: 2px solid #c4b5fd;
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+  }
+
+  .role-label {
+    font-size: 7.5px;
+    color: rgba(255,255,255,0.3);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 5px;
+  }
+
+  .role-text {
+    font-size: 10px;
+    color: rgba(255,255,255,0.6);
+    line-height: 1.6;
+  }
+
+  /* ─── FOOTER ─── */
+  .footer {
+    padding: 14px 28px;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+
+  .footer-mark {
+    font-size: 8px;
+    color: rgba(255,255,255,0.2);
+    letter-spacing: 0.1em;
+    font-weight: 500;
+    text-transform: uppercase;
+  }
+
+  .footer-link {
+    font-size: 8.5px;
+    color: #c4b5fd;
+    font-family: 'Inter', monospace;
+    letter-spacing: 0.02em;
+  }
+
+  .footer-dot {
+    width: 4px; height: 4px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+  }
+
+  .footer-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ─── HERO ─── -->
+  <div class="hero">
+    <img class="hero-img"
+         src="C:\Users\user\.gemini\antigravity\brain\feaaf6f2-ba4e-4e31-be12-5af63632fa9e\portfolio_hero_1776589051833.png"
+         alt="Check-Storis screens">
+    <div class="hero-overlay"></div>
+
+    <div class="hero-topbar">
+      <span class="hero-cat">Telegram Mini App · Full-Stack</span>
+      <span class="hero-year">2026</span>
+    </div>
+
+    <div class="hero-title-block">
+      <div class="hero-title">Check-<em>Storis</em></div>
+      <div class="hero-tagline">
+        Система регистрации через верификацию репоста — от Mini App до Telegram-уведомления за секунды
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── METRICS STRIP ─── -->
+  <div class="metrics-strip">
+    <div class="metric-cell">
+      <div class="metric-number cyan">100%</div>
+      <div class="metric-desc">Bot-driven<br>workflow</div>
+    </div>
+    <div class="metric-cell">
+      <div class="metric-number violet">&lt;2s</div>
+      <div class="metric-desc">Время уведомления<br>после загрузки</div>
+    </div>
+    <div class="metric-cell">
+      <div class="metric-number rose">0</div>
+      <div class="metric-desc">Внешних<br>сервисов</div>
+    </div>
+    <div class="metric-cell">
+      <div class="metric-number" style="color:#a3e635;">3+</div>
+      <div class="metric-desc">Статуса заявки<br>в реальном времени</div>
+    </div>
+  </div>
+
+  <!-- ─── BODY ─── -->
+  <div class="body">
+
+    <!-- LEFT -->
+    <div class="col-left">
+      <div class="section-eyebrow">The Challenge</div>
+      <div class="section-heading">Как проверить репост<br>без API Instagram?</div>
+      <div class="body-text">
+        Нужна была система регистрации на мероприятие, где условием участия
+        служит <strong>репост сторис в Telegram</strong>. Без публичного API — только
+        скриншот как доказательство, ручная проверка администратором,
+        и мгновенный фидбек пользователю.
+      </div>
+
+      <div class="separator"></div>
+
+      <div class="section-eyebrow">The Solution</div>
+      <ul class="steps">
+        <li class="step">
+          <div class="step-dot"></div>
+          <div class="step-body"><strong>Telegram Mini App</strong> — нативный интерфейс прямо в мессенджере, авторизация через initData без регистрации</div>
+        </li>
+        <li class="step">
+          <div class="step-dot"></div>
+          <div class="step-body"><strong>Foto-first модерация</strong> — скриншот приходит в личку бота с кнопками, не нужно открывать веб-панель</div>
+        </li>
+        <li class="step">
+          <div class="step-dot"></div>
+          <div class="step-body"><strong>Мгновенный фидбек</strong> — пользователь сразу видит статус: на проверке → одобрено → бейдж участника</div>
+        </li>
+        <li class="step">
+          <div class="step-dot"></div>
+          <div class="step-body"><strong>Railway CI/CD</strong> — push в GitHub → автодеплой за 3 мин, PostgreSQL managed</div>
+        </li>
+      </ul>
+    </div>
+
+    <!-- RIGHT -->
+    <div class="col-right">
+
+      <div class="screen-card">
+        <div class="screen-topbar">
+          <div class="dot r"></div>
+          <div class="dot y"></div>
+          <div class="dot g"></div>
+          <div class="screen-label">live product · check-storis.up.railway.app</div>
+        </div>
+        <div class="screen-body">
+          <!-- Mini App Phone -->
+          <div class="phone-mock">
+            <div class="phone-header">📱 Mini App</div>
+            <div class="phone-content">
+              <div class="p-title">Тусовка на Споте</div>
+              <div class="p-sub">25 апреля · Горького 43а</div>
+              <div class="p-badge">✅ Одобрено</div>
+              <div class="p-upload">📸 Загрузить скриншот</div>
+            </div>
+          </div>
+          <!-- Bot Phone -->
+          <div class="phone-mock">
+            <div class="phone-header">🤖 Bot Admin</div>
+            <div class="phone-content">
+              <div class="tg-photo-box">📷 screenshot.jpg</div>
+              <div class="tg-bubble">
+                <strong>🔔 Новая заявка!</strong>
+                Эндрю (@AndrewSochy)
+              </div>
+              <div class="tg-btns">
+                <div class="tg-btn ok">✅ Одобрить</div>
+                <div class="tg-btn no">❌ Отклонить</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="role-block" style="margin-bottom:14px;">
+        <div class="role-label">// My role</div>
+        <div class="role-text">
+          Full-stack разработка с нуля — архитектура, UI Mini App,
+          Telegram Bot логика, PostgreSQL схема, Docker + Railway деплой
+        </div>
+      </div>
+
+      <div class="tags-row">
+        <span class="tag">Next.js 16</span>
+        <span class="tag">TypeScript</span>
+        <span class="tag">Telegraf</span>
+        <span class="tag">Prisma 7</span>
+        <span class="tag">PostgreSQL</span>
+        <span class="tag">Docker</span>
+        <span class="tag">Railway</span>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ─── FOOTER ─── -->
+  <div class="footer">
+    <div class="footer-mark">Andrew Sochy · Dev Portfolio</div>
+    <div class="footer-right">
+      <div class="footer-dot"></div>
+      <div class="footer-link">check-storis-production-673a.up.railway.app</div>
+      <div class="footer-dot"></div>
+      <div class="footer-link">@lid_lider_bot</div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
