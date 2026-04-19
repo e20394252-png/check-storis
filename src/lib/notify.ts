@@ -113,15 +113,20 @@ export async function notifyRegistrationRejected(
   );
 }
 
-/** Notify admin group about new pending registration — sends photo + buttons */
+/** Notify admin(s) about new pending registration — sends photo + buttons
+ *  Supports multiple admins via ADMIN_CHAT_IDS="id1,id2" env var
+ *  Falls back to single ADMIN_CHAT_ID for backward compat
+ */
 export async function notifyAdminNewRegistration(
   registrationId: string,
   userName: string,
   username?: string | null,
   proofBase64?: string | null
 ) {
-  const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
-  if (!ADMIN_CHAT_ID) return;
+  // Support both ADMIN_CHAT_IDS (comma-separated) and legacy ADMIN_CHAT_ID
+  const raw = process.env.ADMIN_CHAT_IDS || process.env.ADMIN_CHAT_ID || '';
+  const adminIds = raw.split(',').map(s => s.trim()).filter(Boolean);
+  if (adminIds.length === 0) return;
 
   const caption =
     `🔔 <b>Новая заявка на проверку!</b>\n\n` +
@@ -135,18 +140,25 @@ export async function notifyAdminNewRegistration(
     ]]
   });
 
-  if (proofBase64) {
-    // Send photo with caption and buttons
-    await sendPhoto(ADMIN_CHAT_ID, proofBase64, caption, {
-      reply_markup: replyMarkup,
-      disable_web_page_preview: 'true',
-    });
-  } else {
-    // Fallback: text only
-    await sendMessage(ADMIN_CHAT_ID, caption, {
-      reply_markup: replyMarkup,
-      parse_mode: 'HTML',
-      disable_web_page_preview: true,
-    });
-  }
+  // Send to all admins in parallel
+  await Promise.all(adminIds.map(async (adminId) => {
+    if (proofBase64) {
+      const sent = await sendPhoto(adminId, proofBase64, caption, JSON.parse(replyMarkup));
+      if (!sent) {
+        // Fallback: text only if photo failed
+        await sendMessage(adminId, caption, {
+          reply_markup: replyMarkup,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+        });
+      }
+    } else {
+      await sendMessage(adminId, caption, {
+        reply_markup: replyMarkup,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      });
+    }
+  }));
 }
+
