@@ -31,6 +31,40 @@ async function sendMessage(chatId: string | number | bigint, text: string, extra
   }
 }
 
+async function sendPhoto(
+  chatId: string | number | bigint,
+  base64Image: string,
+  caption: string,
+  extra?: object
+) {
+  if (!BOT_TOKEN) return;
+  try {
+    const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const blob = new Blob([buffer], { type: 'image/jpeg' });
+    const form = new FormData();
+    form.append('chat_id', chatId.toString());
+    form.append('photo', blob, 'screenshot.jpg');
+    form.append('caption', caption);
+    form.append('parse_mode', 'HTML');
+    if (extra) {
+      Object.entries(extra).forEach(([k, v]) =>
+        form.append(k, typeof v === 'string' ? v : JSON.stringify(v))
+      );
+    }
+    const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+      method: 'POST',
+      body: form,
+    });
+    if (!res.ok) {
+      const err = await res.text();
+      console.error('[notify] sendPhoto error:', err);
+    }
+  } catch (err) {
+    console.error('[notify] Failed to send photo:', err);
+  }
+}
+
 const openAppButton = {
   reply_markup: JSON.stringify({
     inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: APP_URL } }]],
@@ -79,30 +113,40 @@ export async function notifyRegistrationRejected(
   );
 }
 
-/** Notify admin group about new pending registration */
+/** Notify admin group about new pending registration — sends photo + buttons */
 export async function notifyAdminNewRegistration(
   registrationId: string,
   userName: string,
-  username?: string | null
+  username?: string | null,
+  proofBase64?: string | null
 ) {
   const ADMIN_CHAT_ID = process.env.ADMIN_CHAT_ID;
   if (!ADMIN_CHAT_ID) return;
 
-  await sendMessage(ADMIN_CHAT_ID,
+  const caption =
     `🔔 <b>Новая заявка на проверку!</b>\n\n` +
     `👤 ${userName}${username ? ` (@${username})` : ''}\n\n` +
-    `<a href="${APP_URL}/admin?key=${process.env.ADMIN_SECRET}">Открыть панель модератора →</a>`,
-    {
-      reply_markup: JSON.stringify({
-        inline_keyboard: [
-          [
-            { text: '✅ Одобрить', callback_data: `reg:approve:${registrationId}` },
-            { text: '❌ Отклонить', callback_data: `reg:reject:${registrationId}` },
-          ]
-        ]
-      }),
+    `<a href="${APP_URL}/admin?key=${process.env.ADMIN_SECRET}">Открыть панель модератора →</a>`;
+
+  const replyMarkup = JSON.stringify({
+    inline_keyboard: [[
+      { text: '✅ Одобрить', callback_data: `reg:approve:${registrationId}` },
+      { text: '❌ Отклонить', callback_data: `reg:reject:${registrationId}` },
+    ]]
+  });
+
+  if (proofBase64) {
+    // Send photo with caption and buttons
+    await sendPhoto(ADMIN_CHAT_ID, proofBase64, caption, {
+      reply_markup: replyMarkup,
+      disable_web_page_preview: 'true',
+    });
+  } else {
+    // Fallback: text only
+    await sendMessage(ADMIN_CHAT_ID, caption, {
+      reply_markup: replyMarkup,
       parse_mode: 'HTML',
       disable_web_page_preview: true,
-    }
-  );
+    });
+  }
 }

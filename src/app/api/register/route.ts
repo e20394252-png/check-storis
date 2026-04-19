@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
     // 7. Notify admin (fire-and-forget)
     const displayName = tgUser.first_name || tgUser.username || 'Пользователь';
-    notifyAdminNewRegistration(registration.id, displayName, tgUser.username).catch(console.error);
+    notifyAdminNewRegistration(registration.id, displayName, tgUser.username, proofUrl).catch(console.error);
 
     return NextResponse.json({ success: true, status: 'pending' });
   } catch (err) {
