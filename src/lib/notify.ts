@@ -10,10 +10,10 @@ const APP_URL =
     ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
     : 'https://check-storis-production-673a.up.railway.app');
 
-async function sendMessage(chatId: string | number | bigint, text: string, extra?: object) {
+async function sendMessage(chatId: string | number | bigint, text: string, extra?: object): Promise<boolean> {
   if (!BOT_TOKEN) {
     console.warn('[notify] TELEGRAM_BOT_TOKEN not set, skipping notification');
-    return;
+    return false;
   }
   try {
     const res = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
@@ -29,10 +29,21 @@ async function sendMessage(chatId: string | number | bigint, text: string, extra
     if (!res.ok) {
       const err = await res.text();
       console.error('[notify] Telegram API error:', err);
+      return false;
     }
+    return true;
   } catch (err) {
     console.error('[notify] Failed to send notification:', err);
+    return false;
   }
+}
+
+export function escapeHtml(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
 }
 
 async function sendPhoto(
@@ -89,9 +100,9 @@ export async function notifyRegistrationApproved(
 ) {
   await sendMessage(telegramId,
     `🎉 <b>Регистрация подтверждена!</b>\n\n` +
-    `Ты в списке участников <b>${eventTitle}</b> ✅\n\n` +
-    (eventDate ? `📅 Дата: ${eventDate}\n` : '') +
-    (eventLocation ? `📍 Место: ${eventLocation}\n` : '') +
+    `Ты в списке участников <b>${escapeHtml(eventTitle)}</b> ✅\n\n` +
+    (eventDate ? `📅 Дата: ${escapeHtml(eventDate)}\n` : '') +
+    (eventLocation ? `📍 Место: ${escapeHtml(eventLocation)}\n` : '') +
     `\nДо встречи!`,
     openAppButton
   );
@@ -106,8 +117,8 @@ export async function notifyRegistrationRejected(
 ) {
   await sendMessage(telegramId,
     `⚠️ <b>Скриншот не прошёл проверку</b>\n\n` +
-    `К сожалению, мы не смогли подтвердить твой репост для <b>${eventTitle}</b>.\n\n` +
-    (adminNote ? `Причина: ${adminNote}\n\n` : '') +
+    `К сожалению, мы не смогли подтвердить твой репост для <b>${escapeHtml(eventTitle)}</b>.\n\n` +
+    (adminNote ? `Причина: ${escapeHtml(adminNote)}\n\n` : '') +
     `Загрузи скриншот повторно — убедись, что репост виден в твоём профиле.`,
     tryAgainButton
   );
@@ -130,7 +141,7 @@ export async function notifyAdminNewRegistration(
 
   const caption =
     `🔔 <b>Новая заявка на проверку!</b>\n\n` +
-    `👤 ${userName}${username ? ` (@${username})` : ''}\n\n` +
+    `👤 ${escapeHtml(userName)}${username ? ` (@${escapeHtml(username)})` : ''}\n\n` +
     `<a href="${APP_URL}/admin?key=${process.env.ADMIN_SECRET}">Открыть панель модератора →</a>`;
 
   const replyMarkup = JSON.stringify({
@@ -172,11 +183,11 @@ export async function broadcastEventPush(
     : null;
 
   const text =
-    `📣 <b>${event.title}</b>\n\n` +
-    (event.description ? `${event.description}\n\n` : '') +
-    (dateStr ? `📅 <b>Дата:</b> ${dateStr}\n` : '') +
-    (event.location ? `📍 <b>Место:</b> ${event.location}\n` : '') +
-    (event.repostUrl ? `\n🔗 <a href="${event.repostUrl}">Открыть публикацию для репоста</a>\n` : '') +
+    `📣 <b>${escapeHtml(event.title)}</b>\n\n` +
+    (event.description ? `${escapeHtml(event.description)}\n\n` : '') +
+    (dateStr ? `📅 <b>Дата:</b> ${escapeHtml(dateStr)}\n` : '') +
+    (event.location ? `📍 <b>Место:</b> ${escapeHtml(event.location)}\n` : '') +
+    (event.repostUrl ? `\n🔗 <a href="${escapeHtml(event.repostUrl)}">Открыть публикацию для репоста</a>\n` : '') +
     `\nНажми кнопку ниже чтобы зарегистрироваться!`;
 
   const replyMarkup = JSON.stringify({
@@ -188,11 +199,15 @@ export async function broadcastEventPush(
 
   for (const telegramId of telegramIds) {
     try {
-      await sendMessage(telegramId, text, {
+      const success = await sendMessage(telegramId, text, {
         reply_markup: replyMarkup,
         disable_web_page_preview: true,
       });
-      sent++;
+      if (success) {
+        sent++;
+      } else {
+        failed++;
+      }
       await new Promise(r => setTimeout(r, 50)); // ~20 msg/sec — Telegram rate limit
     } catch {
       failed++;
