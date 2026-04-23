@@ -9,9 +9,15 @@ interface Props {
 export default function EventPushButton({ eventId, adminKey }: Props) {
   const [state, setState] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
   const [result, setResult] = useState<{ sent?: number; failed?: number; error?: string } | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   const handlePush = async () => {
-    if (!confirm('Разослать объявление об этом мероприятии всем пользователям бота?')) return;
+    if (!confirming) {
+      setConfirming(true);
+      setTimeout(() => setConfirming(false), 4000); // Сброс через 4 секунды
+      return;
+    }
+    setConfirming(false);
     setState('sending');
     try {
       const res = await fetch(`/api/admin/events/${eventId}/push?key=${adminKey}`, { method: 'POST' });
@@ -31,13 +37,18 @@ export default function EventPushButton({ eventId, adminKey }: Props) {
         disabled={state === 'sending'}
         style={{
           padding: '8px 14px', fontSize: 12, fontWeight: 700, borderRadius: 8,
-          background: state === 'done' ? 'rgba(0,255,136,0.12)' : state === 'error' ? 'rgba(255,0,128,0.1)' : 'rgba(180,0,255,0.1)',
-          border: `1px solid ${state === 'done' ? 'rgba(0,255,136,0.35)' : state === 'error' ? 'rgba(255,0,128,0.35)' : 'rgba(180,0,255,0.35)'}`,
-          color: state === 'done' ? '#00ff88' : state === 'error' ? '#ff0080' : '#b400ff',
+          background: state === 'done' ? 'rgba(0,255,136,0.12)' : state === 'error' ? 'rgba(255,0,128,0.1)' : confirming ? 'rgba(255,200,0,0.15)' : 'rgba(180,0,255,0.1)',
+          border: `1px solid ${state === 'done' ? 'rgba(0,255,136,0.35)' : state === 'error' ? 'rgba(255,0,128,0.35)' : confirming ? 'rgba(255,200,0,0.5)' : 'rgba(180,0,255,0.35)'}`,
+          color: state === 'done' ? '#00ff88' : state === 'error' ? '#ff0080' : confirming ? '#ffc800' : '#b400ff',
           cursor: state === 'sending' ? 'wait' : 'pointer', whiteSpace: 'nowrap',
+          transition: 'all 0.2s ease',
         }}
       >
-        {state === 'sending' ? '📤 Рассылка...' : state === 'done' ? `✅ Отправлено ${result?.sent}` : state === 'error' ? '❌ Ошибка' : '📣 Push-рассылка'}
+        {state === 'sending' ? '📤 Рассылка...' 
+          : state === 'done' ? `✅ Отправлено ${result?.sent}` 
+          : state === 'error' ? '❌ Ошибка' 
+          : confirming ? '❓ Точно разослать?' 
+          : '📣 Push-рассылка'}
       </button>
       {state === 'done' && result?.failed ? (
         <div style={{ fontSize: 10, color: '#6870a0', marginTop: 4 }}>не доставлено: {result.failed}</div>
