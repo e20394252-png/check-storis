@@ -60,7 +60,12 @@ export default function App() {
       return true;
     };
     if (applyTg()) return;
-    const timers = [setTimeout(() => applyTg(), 300), setTimeout(() => applyTg(), 800), setTimeout(() => applyTg(), 1500)];
+    const timers = [
+      setTimeout(() => applyTg(), 300),
+      setTimeout(() => applyTg(), 800),
+      setTimeout(() => applyTg(), 1500),
+      setTimeout(() => setLoading(false), 2000), // fallback: снять загрузку через 2с
+    ];
     return () => timers.forEach(clearTimeout);
   }, []);
 

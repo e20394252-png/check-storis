@@ -26,10 +26,16 @@ export async function POST(req: NextRequest) {
       }
     };
 
-    // ENUM
+    // ENUMS
     await run('ENUM RegistrationStatus', `
       DO $$ BEGIN
         CREATE TYPE "RegistrationStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await run('ENUM OrganizerStatus', `
+      DO $$ BEGIN
+        CREATE TYPE "OrganizerStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$;
     `);
@@ -41,6 +47,21 @@ export async function POST(req: NextRequest) {
         telegram_id BIGINT UNIQUE NOT NULL,
         username TEXT,
         first_name TEXT,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
+    // Organizer table (NEW)
+    await run('Table Organizer', `
+      CREATE TABLE IF NOT EXISTS "Organizer" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        telegram_id BIGINT UNIQUE NOT NULL,
+        username TEXT,
+        first_name TEXT,
+        photo_url TEXT,
+        status "OrganizerStatus" NOT NULL DEFAULT 'PENDING',
+        "isSuperAdmin" BOOLEAN NOT NULL DEFAULT FALSE,
         "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
         "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
@@ -61,7 +82,17 @@ export async function POST(req: NextRequest) {
       );
     `);
 
-    // Registration table — compound unique (userId, eventId)
+    // New columns on Event
+    await run('Event.imageUrl', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "imageUrl" TEXT;`);
+    await run('Event.organizerId', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "organizerId" TEXT;`);
+    await run('Event FK organizer', `
+      DO $$ BEGIN
+        ALTER TABLE "Event" ADD CONSTRAINT fk_event_organizer FOREIGN KEY ("organizerId") REFERENCES "Organizer"(id);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    // Registration table
     await run('Table Registration', `
       CREATE TABLE IF NOT EXISTS "Registration" (
         id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
@@ -77,10 +108,11 @@ export async function POST(req: NextRequest) {
       );
     `);
 
-    // Drop old unique index on userId if exists, add compound unique
-    await run('Drop old userId unique', `
-      ALTER TABLE "Registration" DROP CONSTRAINT IF EXISTS "Registration_userId_key";
-    `);
+    // New column on Registration
+    await run('Registration.storyUrl', `ALTER TABLE "Registration" ADD COLUMN IF NOT EXISTS "storyUrl" TEXT;`);
+
+    // Constraints
+    await run('Drop old userId unique', `ALTER TABLE "Registration" DROP CONSTRAINT IF EXISTS "Registration_userId_key";`);
     await run('Compound unique userId+eventId', `
       DO $$ BEGIN
         ALTER TABLE "Registration" ADD CONSTRAINT "Registration_userId_eventId_key" UNIQUE ("userId", "eventId");
