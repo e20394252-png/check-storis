@@ -1,6 +1,24 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+
+function TelegramLoginWidget({ botUsername }: { botUsername: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ref.current || !botUsername) return;
+    ref.current.innerHTML = '';
+    const script = document.createElement('script');
+    script.src = 'https://telegram.org/js/telegram-widget.js?22';
+    script.async = true;
+    script.setAttribute('data-telegram-login', botUsername);
+    script.setAttribute('data-size', 'large');
+    script.setAttribute('data-radius', '14');
+    script.setAttribute('data-onauth', 'onTelegramAuth(user)');
+    script.setAttribute('data-request-access', 'write');
+    ref.current.appendChild(script);
+  }, [botUsername]);
+  return <div ref={ref} />;
+}
 import AdminClient from './AdminClient';
 
 interface OrganizerInfo {
@@ -79,9 +97,7 @@ export default function AdminPage() {
         </p>
 
         {botUsername ? (
-          <div dangerouslySetInnerHTML={{
-            __html: `<script async src="https://telegram.org/js/telegram-widget.js?22" data-telegram-login="${botUsername}" data-size="large" data-radius="14" data-onauth="onTelegramAuth(user)" data-request-access="write"></script>`
-          }} />
+          <TelegramLoginWidget botUsername={botUsername} />
         ) : (
           <div style={{ padding: '16px 24px', background: 'rgba(199,92,92,0.1)', border: '1px solid rgba(199,92,92,0.3)', borderRadius: 12, color: 'var(--accent-error)', fontSize: 13 }}>
             Установите NEXT_PUBLIC_BOT_USERNAME в переменных окружения
