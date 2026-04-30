@@ -9,11 +9,15 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   const organizer = await getSession();
   if (!organizer) {
-    return NextResponse.json({ authenticated: false });
+    return NextResponse.json({
+      authenticated: false,
+      botUsername: process.env.NEXT_PUBLIC_BOT_USERNAME || '',
+    });
   }
 
   return NextResponse.json({
     authenticated: true,
+    botUsername: process.env.NEXT_PUBLIC_BOT_USERNAME || '',
     organizer: {
       id: organizer.id,
       telegram_id: organizer.telegram_id.toString(),

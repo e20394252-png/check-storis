@@ -15,6 +15,7 @@ interface OrganizerInfo {
 export default function AdminPage() {
   const [loading, setLoading] = useState(true);
   const [organizer, setOrganizer] = useState<OrganizerInfo | null>(null);
+  const [botUsername, setBotUsername] = useState('');
   const [loginError, setLoginError] = useState('');
 
   // Проверяем сессию при загрузке
@@ -23,6 +24,7 @@ export default function AdminPage() {
       .then(r => r.json())
       .then(d => {
         if (d.authenticated) setOrganizer(d.organizer);
+        if (d.botUsername) setBotUsername(d.botUsername);
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -67,7 +69,7 @@ export default function AdminPage() {
 
   // Не авторизован — показываем логин
   if (!organizer) {
-    const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || '';
+
     return (
       <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, textAlign: 'center' }}>
         <div style={{ fontSize: 48, marginBottom: 20 }}>✨</div>
