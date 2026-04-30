@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { initData, eventId, proofBase64 } = body;
+    const { initData, eventId, proofBase64, storyUrl } = body;
 
     // 1. Validate initData
     const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
@@ -64,11 +64,11 @@ export async function POST(req: NextRequest) {
 
     let registration;
     if (existing) {
-      // Update proof and reset to PENDING (allow re-submission after rejection)
       registration = await prisma.registration.update({
         where: { id: existing.id },
         data: {
           proofUrl,
+          storyUrl: storyUrl || null,
           status: 'PENDING',
           adminNote: null,
         },
@@ -79,6 +79,7 @@ export async function POST(req: NextRequest) {
           userId: user.id,
           eventId,
           proofUrl,
+          storyUrl: storyUrl || null,
           status: 'PENDING',
         },
       });

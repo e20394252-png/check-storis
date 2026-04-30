@@ -18,6 +18,26 @@ model User {
   registrations Registration[]
 }
 
+model Organizer {
+  id           String          @id @default(uuid())
+  telegram_id  BigInt          @unique
+  username     String?
+  first_name   String?
+  photo_url    String?
+  status       OrganizerStatus @default(PENDING)
+  isSuperAdmin Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  events Event[]
+}
+
+enum OrganizerStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Event {
   id          String    @id @default(uuid())
   title       String
@@ -25,10 +45,13 @@ model Event {
   date        DateTime?
   location    String?
   repostUrl   String?
+  imageUrl    String?   @db.Text
   isActive    Boolean   @default(true)
+  organizerId String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  organizer     Organizer?     @relation(fields: [organizerId], references: [id])
   registrations Registration[]
 }
 
@@ -38,6 +61,7 @@ model Registration {
   eventId   String
   status    RegistrationStatus @default(PENDING)
   proofUrl  String?
+  storyUrl  String?
   adminNote String?
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt

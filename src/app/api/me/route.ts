@@ -7,7 +7,6 @@ export const dynamic = 'force-dynamic';
 export async function GET(req: NextRequest) {
   try {
     const initData = req.headers.get('x-telegram-init-data') || '';
-
     const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
     if (!validateInitData(initData, botToken)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
@@ -20,21 +19,17 @@ export async function GET(req: NextRequest) {
 
     const prisma = getPrisma();
 
-    // Get all active events
+    // Все активные мероприятия (включая прошедшие — для вкладки "прошедшие")
     const events = await prisma.event.findMany({
       where: { isActive: true },
       orderBy: { date: 'asc' },
     });
 
-    // Find user with all their registrations
     const user = await prisma.user.findUnique({
       where: { telegram_id: BigInt(tgUser.id) },
-      include: {
-        registrations: true,
-      },
+      include: { registrations: true },
     });
 
-    // Build a map of eventId -> registration status
     const registrationMap: Record<string, { status: string; createdAt: Date; adminNote?: string | null }> = {};
     if (user?.registrations) {
       for (const reg of user.registrations) {
@@ -58,6 +53,7 @@ export async function GET(req: NextRequest) {
         date: ev.date,
         location: ev.location,
         repostUrl: ev.repostUrl,
+        imageUrl: ev.imageUrl,
         registration: registrationMap[ev.id] || null,
       })),
     });

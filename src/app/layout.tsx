@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { TelegramProvider } from "@/components/TelegramProvider";
 import Script from "next/script";
 
 const inter = Inter({ subsets: ["latin", "cyrillic"] });
@@ -22,9 +21,7 @@ export default function RootLayout({
         <Script src="https://telegram.org/js/telegram-web-app.js" strategy="beforeInteractive" />
       </head>
       <body className={`${inter.className} antialiased`}>
-        <TelegramProvider>
-          {children}
-        </TelegramProvider>
+        {children}
       </body>
     </html>
   );

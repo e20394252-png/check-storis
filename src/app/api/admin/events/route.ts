@@ -1,51 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
+import { getSession } from '@/lib/admin-session';
 
 export const dynamic = 'force-dynamic';
 
-function isAdmin(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key') || req.headers.get('x-admin-key');
-  return key === (process.env.ADMIN_SECRET || 'checkStoris2026');
+// GET /api/admin/events — мероприятия текущего организатора (суперадмин видит все)
+export async function GET() {
+  const me = await getSession();
+  if (!me) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (me.status !== 'APPROVED') return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+
+  const prisma = getPrisma();
+  const where = me.isSuperAdmin ? {} : { organizerId: me.id };
+  const events = await prisma.event.findMany({
+    where,
+    orderBy: { createdAt: 'desc' },
+    include: { _count: { select: { registrations: true } } },
+  });
+  return NextResponse.json({ events });
 }
 
-// GET /api/admin/events — all events for admin panel
-export async function GET(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  try {
-    const prisma = getPrisma();
-    const events = await prisma.event.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: {
-        _count: { select: { registrations: true } },
-      },
-    });
-    return NextResponse.json({ events });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
-}
-
-// POST /api/admin/events — create new event
+// POST /api/admin/events — создать мероприятие
 export async function POST(req: NextRequest) {
-  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  try {
-    const body = await req.json();
-    const { title, description, date, location, repostUrl, isActive } = body;
-    if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
+  const me = await getSession();
+  if (!me) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (me.status !== 'APPROVED') return NextResponse.json({ error: 'Not approved' }, { status: 403 });
 
-    const prisma = getPrisma();
-    const event = await prisma.event.create({
-      data: {
-        title,
-        description: description || null,
-        date: date ? new Date(date) : null,
-        location: location || null,
-        repostUrl: repostUrl || null,
-        isActive: isActive !== false,
-      },
-    });
-    return NextResponse.json({ event });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  const body = await req.json();
+  const { title, description, date, location, repostUrl, isActive, imageUrl } = body;
+  if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
+
+  const prisma = getPrisma();
+  const event = await prisma.event.create({
+    data: {
+      title,
+      description: description || null,
+      date: date ? new Date(date) : null,
+      location: location || null,
+      repostUrl: repostUrl || null,
+      imageUrl: imageUrl || null,
+      isActive: isActive !== false,
+      organizerId: me.id,
+    },
+  });
+  return NextResponse.json({ event });
+}
+
+// PUT /api/admin/events — обновить мероприятие
+export async function PUT(req: NextRequest) {
+  const me = await getSession();
+  if (!me) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (me.status !== 'APPROVED') return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+
+  const body = await req.json();
+  const { eventId, title, description, date, location, repostUrl, isActive, imageUrl } = body;
+  if (!eventId) return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
+
+  const prisma = getPrisma();
+  // Проверяем что мероприятие принадлежит организатору
+  if (!me.isSuperAdmin) {
+    const ev = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!ev || ev.organizerId !== me.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
+
+  const event = await prisma.event.update({
+    where: { id: eventId },
+    data: {
+      title: title || undefined,
+      description: description ?? undefined,
+      date: date ? new Date(date) : null,
+      location: location ?? undefined,
+      repostUrl: repostUrl ?? undefined,
+      imageUrl: imageUrl ?? undefined,
+      isActive: isActive ?? undefined,
+    },
+  });
+  return NextResponse.json({ event });
+}
+
+// DELETE /api/admin/events — удалить мероприятие
+export async function DELETE(req: NextRequest) {
+  const me = await getSession();
+  if (!me) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const { eventId } = await req.json();
+  const prisma = getPrisma();
+
+  if (!me.isSuperAdmin) {
+    const ev = await prisma.event.findUnique({ where: { id: eventId } });
+    if (!ev || ev.organizerId !== me.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  }
+
+  await prisma.event.delete({ where: { id: eventId } });
+  return NextResponse.json({ success: true });
 }
