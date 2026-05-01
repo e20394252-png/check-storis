@@ -13,12 +13,56 @@ const APP_URL =
 // ── /start handler ─────────────────────────────────────────────────────────
 bot.start(async (ctx) => {
   const prisma = getPrisma();
+  const payload = (ctx as any).startPayload || '';
 
-  // Try to get active event title for personalized greeting
+  // === Авторизация организатора через deep link ===
+  if (payload.startsWith('auth_')) {
+    const token = payload.slice(5); // убираем "auth_"
+    const { verifyAuthToken } = await import('@/lib/auth-tokens');
+
+    const tgId = BigInt(ctx.from.id);
+    const superAdminIds = (process.env.SUPER_ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+    const isSuperAdmin = superAdminIds.includes(String(ctx.from.id));
+
+    // Upsert organizer
+    const organizer = await prisma.organizer.upsert({
+      where: { telegram_id: tgId },
+      update: {
+        username: ctx.from.username || null,
+        first_name: ctx.from.first_name || null,
+        ...(isSuperAdmin ? { status: 'APPROVED', isSuperAdmin: true } : {}),
+      },
+      create: {
+        telegram_id: tgId,
+        username: ctx.from.username || null,
+        first_name: ctx.from.first_name || null,
+        status: isSuperAdmin ? 'APPROVED' : 'PENDING',
+        isSuperAdmin,
+      },
+    });
+
+    const ok = verifyAuthToken(token, {
+      organizerId: organizer.id,
+      telegramId: tgId,
+      firstName: ctx.from.first_name,
+      username: ctx.from.username,
+    });
+
+    if (ok) {
+      await ctx.reply(
+        `✅ Авторизация успешна!\n\nВернитесь на сайт — вход выполнен автоматически.`,
+        { parse_mode: 'HTML' }
+      );
+    } else {
+      await ctx.reply('❌ Ссылка для входа устарела. Попробуйте ещё раз на сайте.');
+    }
+    return;
+  }
+
+  // === Обычный /start — приветствие для пользователей mini app ===
   const event = await prisma.event.findFirst({ where: { isActive: true } }).catch(() => null);
   const eventTitle = event?.title || 'мероприятие';
   const repostUrl = event?.repostUrl;
-
   const firstName = ctx.from?.first_name || 'друг';
 
   return ctx.reply(
