@@ -38,5 +38,25 @@ export async function PATCH(req: NextRequest) {
     where: { id: organizerId },
     data: { status: action === 'approve' ? 'APPROVED' : 'REJECTED' },
   });
+
+  // Уведомляем организатора через бота
+  const botToken = process.env.TELEGRAM_BOT_TOKEN;
+  if (botToken && updated.telegram_id) {
+    const chatId = updated.telegram_id.toString();
+    const adminUrl = process.env.RAILWAY_PUBLIC_DOMAIN
+      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/admin`
+      : 'https://check-storis-production-673a.up.railway.app/admin';
+
+    const text = action === 'approve'
+      ? `🎉 <b>Ваша заявка одобрена!</b>\n\nТеперь вы можете создавать мероприятия в панели организатора.\n\n👉 <a href="${adminUrl}">Открыть панель</a>`
+      : `❌ <b>Заявка отклонена</b>\n\nК сожалению, ваша заявка на доступ к панели организатора была отклонена.`;
+
+    fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' }),
+    }).catch(err => console.error('[organizer notify]', err));
+  }
+
   return NextResponse.json({ success: true, status: updated.status });
 }
