@@ -1,22 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
+import { getSession } from '@/lib/admin-session';
 
 export const dynamic = 'force-dynamic';
 
-function isAdmin(req: NextRequest) {
-  const key = req.nextUrl.searchParams.get('key') || req.headers.get('x-admin-key');
-  return key === (process.env.ADMIN_SECRET || 'checkStoris2026');
-}
-
-// POST /api/admin/events/[id]/push — broadcast event to all users via bot
+// POST /api/admin/events/[id]/push — рассылка мероприятия всем пользователям
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!isAdmin(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const me = await getSession();
+  if (!me) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (me.status !== 'APPROVED') return NextResponse.json({ error: 'Not approved' }, { status: 403 });
+
   const { id } = await params;
 
   try {
     const prisma = getPrisma();
     const event = await prisma.event.findUnique({ where: { id } });
     if (!event) return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+
+    // Проверяем принадлежность
+    if (!me.isSuperAdmin && event.organizerId !== me.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
 
     const users = await prisma.user.findMany({
       select: { telegram_id: true },

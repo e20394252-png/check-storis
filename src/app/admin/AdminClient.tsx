@@ -20,6 +20,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const [editEv, setEditEv] = useState<Ev|null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState('');
+  const [pushState, setPushState] = useState<Record<string, { status: string; msg?: string }>>({});
 
   const load = async () => {
     const [eRes, rRes] = await Promise.all([
@@ -60,6 +61,23 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
     if (!confirm('Удалить мероприятие?')) return;
     await fetch('/api/admin/events', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: id }) });
     await load();
+  };
+
+  const pushEvent = async (id: string) => {
+    const current = pushState[id];
+    if (!current || current.status !== 'confirm') {
+      setPushState(p => ({ ...p, [id]: { status: 'confirm' } }));
+      setTimeout(() => setPushState(p => { if (p[id]?.status === 'confirm') { const n = { ...p }; delete n[id]; return n; } return p; }), 4000);
+      return;
+    }
+    setPushState(p => ({ ...p, [id]: { status: 'sending' } }));
+    try {
+      const res = await fetch(`/api/admin/events/${id}/push`, { method: 'POST' });
+      const data = await res.json();
+      if (data.error) setPushState(p => ({ ...p, [id]: { status: 'error', msg: data.error } }));
+      else setPushState(p => ({ ...p, [id]: { status: 'done', msg: `Отправлено: ${data.sent}` } }));
+    } catch { setPushState(p => ({ ...p, [id]: { status: 'error', msg: 'Ошибка сети' } })); }
+    setTimeout(() => setPushState(p => { const n = { ...p }; delete n[id]; return n; }), 5000);
   };
 
   const reviewOrg = async (id: string, action: string) => {
@@ -175,6 +193,9 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                       </div>
                     </div>
                     <div style={{ display:'flex', gap:8 }}>
+                      <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
+                        {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
+                      </button>
                       <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
                       <button onClick={() => delEvent(ev.id)} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(199,92,92,0.07)', border:'1px solid rgba(199,92,92,0.2)', color:error, cursor:'pointer' }}>🗑</button>
                     </div>
