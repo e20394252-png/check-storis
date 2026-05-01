@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 
 type Org = { id: string; first_name?: string|null; username?: string|null; status: string; isSuperAdmin: boolean };
-type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; isActive: boolean; _count?: { registrations: number } };
+type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; _count?: { registrations: number } };
 type Reg = { id: string; status: string; proofUrl?: string|null; storyUrl?: string|null; adminNote?: string|null; createdAt: string; updatedAt: string; user: { first_name?: string|null; username?: string|null }; event: { id?: string; title?: string|null } };
 type OrgItem = { id: string; telegram_id: string; first_name?: string|null; username?: string|null; photo_url?: string|null; status: string; isSuperAdmin: boolean; createdAt: string; _count?: { events: number } };
 
@@ -262,6 +262,8 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
   const [date, setDate] = useState(event?.date ? new Date(event.date).toISOString().slice(0,16) : '');
   const [loc, setLoc] = useState(event?.location || '');
   const [url, setUrl] = useState(event?.repostUrl || '');
+  const [price, setPrice] = useState(event?.price?.toString() || '');
+  const [discountPrice, setDiscountPrice] = useState(event?.discountPrice?.toString() || '');
   const [active, setActive] = useState(event?.isActive !== false);
   const [img, setImg] = useState(event?.imageUrl || '');
   const imgRef = useRef<HTMLInputElement>(null);
@@ -287,7 +289,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
     setDesc(desc.substring(0, s) + wrap + desc.substring(e));
   };
 
-  const submit = () => onSave({ title, description:desc||null, date:date||null, location:loc||null, repostUrl:url||null, isActive:active, imageUrl:img||null });
+  const submit = () => onSave({ title, description:desc||null, date:date||null, location:loc||null, repostUrl:url||null, isActive:active, imageUrl:img||null, price: price ? Number(price) : null, discountPrice: discountPrice ? Number(discountPrice) : null });
 
   return (
     <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:24 }}>
@@ -318,6 +320,14 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
         <div>
           <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>МЕСТО</label>
           <input value={loc} onChange={e=>setLoc(e.target.value)} style={inp} placeholder="Адрес или название" />
+        </div>
+        <div>
+          <label style={{ fontSize:11, color:gold, display:'block', marginBottom:6 }}>ЦЕНА (₽) *</label>
+          <input type="number" value={price} onChange={e=>setPrice(e.target.value)} style={inp} placeholder="5000" required />
+        </div>
+        <div>
+          <label style={{ fontSize:11, color:gold, display:'block', marginBottom:6 }}>ЦЕНА СО СКИДКОЙ (₽) *</label>
+          <input type="number" value={discountPrice} onChange={e=>setDiscountPrice(e.target.value)} style={inp} placeholder="3000" required />
         </div>
         <div style={{ gridColumn:'1/-1' }}>
           <label style={{ fontSize:11, color:gold, display:'block', marginBottom:6 }}>ССЫЛКА НА ПУБЛИКАЦИЮ</label>

@@ -54,6 +54,8 @@ export async function GET(req: NextRequest) {
         location: ev.location,
         repostUrl: ev.repostUrl,
         imageUrl: ev.imageUrl,
+        price: ev.price,
+        discountPrice: ev.discountPrice,
         registration: registrationMap[ev.id] || null,
       })),
     });

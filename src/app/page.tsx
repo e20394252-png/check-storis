@@ -9,6 +9,7 @@ type RegStatus = 'none' | 'pending' | 'approved' | 'rejected';
 interface EventItem {
   id: string; title: string; description?: string|null; date?: string|null;
   location?: string|null; repostUrl?: string|null; imageUrl?: string|null;
+  price?: number|null; discountPrice?: number|null;
   registration: { status: string; createdAt: string; adminNote?: string|null } | null;
 }
 
@@ -139,6 +140,26 @@ export default function App() {
     );
   }
 
+  const handlePayment = async (ev: EventItem, type: 'full' | 'discount') => {
+    const priceValue = type === 'full' ? ev.price : ev.discountPrice;
+    try {
+      await fetch('/api/payment/webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
+        body: JSON.stringify({
+          eventId: ev.id,
+          eventTitle: ev.title,
+          price: priceValue,
+          type,
+          user: meData?.user || {},
+        }),
+      });
+      alert(`Заявка на оплату ${priceValue} ₽ отправлена! Ожидайте подтверждения.`);
+    } catch {
+      alert('Ошибка при отправке заявки');
+    }
+  };
+
   const UploadForm = ({ eventId }: { eventId: string }) => {
     const inputRef = useRef<HTMLInputElement | null>(null);
     return (
@@ -243,6 +264,36 @@ export default function App() {
             {regStatus === 'rejected' && (
               <div style={{ padding: '10px 14px', background: 'rgba(199,92,92,0.07)', borderRadius: 8, marginBottom: 10, fontSize: 12, color: 'var(--accent-error)' }}>
                 ❌ Скриншот не прошёл{reg?.adminNote ? `: ${reg.adminNote}` : ''}
+              </div>
+            )}
+
+            {/* Кнопки оплаты */}
+            {(ev.price || ev.discountPrice) && !isPast && (
+              <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
+                {ev.price && (
+                  <button onClick={() => handlePayment(ev, 'full')} className="warm-btn-primary" style={{ flex: 1, padding: '13px 10px', fontSize: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
+                    <span style={{ fontWeight: 800, fontSize: 18 }}>{ev.price} ₽</span>
+                    <span style={{ fontSize: 11, opacity: 0.8 }}>Оплатить</span>
+                  </button>
+                )}
+                {ev.discountPrice && (
+                  <button
+                    onClick={() => regStatus === 'approved' ? handlePayment(ev, 'discount') : null}
+                    disabled={regStatus !== 'approved'}
+                    style={{
+                      flex: 1, padding: '13px 10px', fontSize: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
+                      borderRadius: 12, border: '1px solid', cursor: regStatus === 'approved' ? 'pointer' : 'not-allowed',
+                      background: regStatus === 'approved' ? 'linear-gradient(135deg, rgba(143,188,106,0.15), rgba(143,188,106,0.08))' : 'rgba(200,168,110,0.04)',
+                      borderColor: regStatus === 'approved' ? 'rgba(143,188,106,0.4)' : 'rgba(200,168,110,0.12)',
+                      color: regStatus === 'approved' ? 'var(--accent-success)' : 'var(--text-muted)',
+                      opacity: regStatus === 'approved' ? 1 : 0.5,
+                      fontWeight: 700,
+                    }}
+                  >
+                    <span style={{ fontWeight: 800, fontSize: 18, textDecoration: regStatus !== 'approved' ? 'line-through' : 'none' }}>{ev.discountPrice} ₽</span>
+                    <span style={{ fontSize: 11, opacity: 0.8 }}>{regStatus === 'approved' ? 'Оплатить со скидкой' : '🔒 Сделай репост'}</span>
+                  </button>
+                )}
               </div>
             )}
 

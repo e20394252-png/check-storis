@@ -91,6 +91,8 @@ export async function POST(req: NextRequest) {
       EXCEPTION WHEN duplicate_object THEN NULL;
       END $$;
     `);
+    await run('Event.price', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "price" INTEGER;`);
+    await run('Event.discountPrice', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "discountPrice" INTEGER;`);
 
     // Registration table
     await run('Table Registration', `

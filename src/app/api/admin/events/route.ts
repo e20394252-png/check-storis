@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   if (me.status !== 'APPROVED') return NextResponse.json({ error: 'Not approved' }, { status: 403 });
 
   const body = await req.json();
-  const { title, description, date, location, repostUrl, isActive, imageUrl } = body;
+  const { title, description, date, location, repostUrl, isActive, imageUrl, price, discountPrice } = body;
   if (!title) return NextResponse.json({ error: 'Title required' }, { status: 400 });
 
   const prisma = getPrisma();
@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
       location: location || null,
       repostUrl: repostUrl || null,
       imageUrl: imageUrl || null,
+      price: price != null ? Number(price) : null,
+      discountPrice: discountPrice != null ? Number(discountPrice) : null,
       isActive: isActive !== false,
       organizerId: me.id,
     },
@@ -53,11 +55,10 @@ export async function PUT(req: NextRequest) {
   if (me.status !== 'APPROVED') return NextResponse.json({ error: 'Not approved' }, { status: 403 });
 
   const body = await req.json();
-  const { eventId, title, description, date, location, repostUrl, isActive, imageUrl } = body;
+  const { eventId, title, description, date, location, repostUrl, isActive, imageUrl, price, discountPrice } = body;
   if (!eventId) return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
 
   const prisma = getPrisma();
-  // Проверяем что мероприятие принадлежит организатору
   if (!me.isSuperAdmin) {
     const ev = await prisma.event.findUnique({ where: { id: eventId } });
     if (!ev || ev.organizerId !== me.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
@@ -71,6 +72,8 @@ export async function PUT(req: NextRequest) {
       date: date ? new Date(date) : null,
       location: location ?? undefined,
       repostUrl: repostUrl ?? undefined,
+      price: price != null ? Number(price) : undefined,
+      discountPrice: discountPrice != null ? Number(discountPrice) : undefined,
       imageUrl: imageUrl ?? undefined,
       isActive: isActive ?? undefined,
     },
