@@ -122,6 +122,23 @@ export async function POST(req: NextRequest) {
       END $$;
     `);
 
+    // PaymentRequest table
+    await run('Table PaymentRequest', `
+      CREATE TABLE IF NOT EXISTS "PaymentRequest" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        "eventId" TEXT NOT NULL,
+        "eventTitle" TEXT NOT NULL DEFAULT '',
+        price INTEGER NOT NULL DEFAULT 0,
+        "paymentType" TEXT NOT NULL DEFAULT 'full',
+        "telegramId" BIGINT NOT NULL,
+        "firstName" TEXT,
+        username TEXT,
+        status TEXT NOT NULL DEFAULT 'new',
+        "createdAt" TIMESTAMPTZ DEFAULT now(),
+        CONSTRAINT fk_pr_event FOREIGN KEY ("eventId") REFERENCES "Event"(id)
+      );
+    `);
+
     const tables = await prisma.$queryRawUnsafe<{ tablename: string }[]>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;`
     );

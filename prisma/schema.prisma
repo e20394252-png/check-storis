@@ -53,8 +53,9 @@ model Event {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  organizer     Organizer?     @relation(fields: [organizerId], references: [id])
-  registrations Registration[]
+  organizer       Organizer?       @relation(fields: [organizerId], references: [id])
+  registrations   Registration[]
+  paymentRequests PaymentRequest[]
 }
 
 model Registration {
@@ -78,4 +79,19 @@ enum RegistrationStatus {
   PENDING
   APPROVED
   REJECTED
+}
+
+model PaymentRequest {
+  id          String   @id @default(uuid())
+  eventId     String
+  eventTitle  String
+  price       Int
+  paymentType String   // 'full' | 'discount'
+  telegramId  BigInt
+  firstName   String?
+  username    String?
+  status      String   @default("new") // 'new' | 'processed'
+  createdAt   DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
 }
