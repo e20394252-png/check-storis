@@ -7,26 +7,33 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { eventId, eventTitle, price, type, user } = body;
+    const { eventId, eventTitle, price, type, user, telegram_id } = body;
 
     if (!eventId || !price || !type) {
       return NextResponse.json({ error: 'Missing fields' }, { status: 400 });
     }
 
-    const prisma = getPrisma();
-
-    // Получаем telegram_id пользователя из initData
-    const initData = req.headers.get('x-telegram-init-data') || '';
+    // telegram_id из body или из initData
     let telegramId = BigInt(0);
-    try {
-      const params = new URLSearchParams(initData);
-      const userJson = params.get('user');
-      if (userJson) {
-        const u = JSON.parse(userJson);
-        telegramId = BigInt(u.id);
-      }
-    } catch {}
+    if (telegram_id) {
+      telegramId = BigInt(telegram_id);
+    } else {
+      try {
+        const initData = req.headers.get('x-telegram-init-data') || '';
+        const params = new URLSearchParams(initData);
+        const userJson = params.get('user');
+        if (userJson) {
+          const u = JSON.parse(userJson);
+          telegramId = BigInt(u.id);
+        }
+      } catch {}
+    }
 
+    if (telegramId === BigInt(0)) {
+      return NextResponse.json({ error: 'telegram_id not found' }, { status: 400 });
+    }
+
+    const prisma = getPrisma();
     const pr = await prisma.paymentRequest.create({
       data: {
         eventId,

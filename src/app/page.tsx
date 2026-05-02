@@ -142,8 +142,9 @@ export default function App() {
 
   const handlePayment = async (ev: EventItem, type: 'full' | 'discount') => {
     const priceValue = type === 'full' ? ev.price : ev.discountPrice;
+    const tgUser = window.Telegram?.WebApp?.initDataUnsafe?.user;
     try {
-      await fetch('/api/payment/webhook', {
+      const res = await fetch('/api/payment/webhook', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
         body: JSON.stringify({
@@ -151,10 +152,16 @@ export default function App() {
           eventTitle: ev.title,
           price: priceValue,
           type,
-          user: meData?.user || {},
+          telegram_id: tgUser?.id?.toString() || '',
+          user: { first_name: tgUser?.first_name || meData?.user?.first_name || '', username: tgUser?.username || meData?.user?.username || '' },
         }),
       });
-      alert(`Заявка на оплату ${priceValue} ₽ отправлена! Ожидайте подтверждения.`);
+      const data = await res.json();
+      if (data.success) {
+        alert(`Заявка на оплату ${priceValue} ₽ отправлена! Ожидайте подтверждения.`);
+      } else {
+        alert('Ошибка: ' + (data.error || 'неизвестная'));
+      }
     } catch {
       alert('Ошибка при отправке заявки');
     }
