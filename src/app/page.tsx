@@ -158,10 +158,9 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        // Открываем бот с deep link — ЛидТех увидит /start pay_... и запустит сценарий
+        // Открываем бот с deep link — пользователь отправит /start pay → ЛидТех запустит сценарий
         const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || 'check_storis_bot';
-        const deepLink = `https://t.me/${botUsername}?start=pay_${data.paymentRequestId}`;
-        window.Telegram?.WebApp?.openTelegramLink?.(deepLink);
+        window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/${botUsername}?start=pay`);
         window.Telegram?.WebApp?.close?.();
       } else {
         alert('Ошибка: ' + (data.error || 'неизвестная'));
