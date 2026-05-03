@@ -9,76 +9,54 @@ const APP_URL =
   (process.env.RAILWAY_PUBLIC_DOMAIN
     ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
     : 'https://check-storis-production-673a.up.railway.app');
-
-// ── /start handler ─────────────────────────────────────────────────────────
+// ── /start handler — авторизация через login_ deep link ───────────────────
+// Обычный /start (без payload) обработает ЛидТех.
+// /start login_TOKEN — авторизация организатора (наш webhook).
 bot.start(async (ctx) => {
-  const prisma = getPrisma();
   const payload = (ctx as any).startPayload || '';
 
-  // === Авторизация организатора через deep link ===
-  if (payload.startsWith('auth_')) {
-    const token = payload.slice(5); // убираем "auth_"
-    const { verifyAuthToken } = await import('@/lib/auth-tokens');
+  // Если нет login_ payload — пропускаем, ЛидТех обработает
+  if (!payload.startsWith('login_')) return;
 
-    const tgId = BigInt(ctx.from.id);
-    const superAdminIds = (process.env.SUPER_ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
-    const isSuperAdmin = superAdminIds.includes(String(ctx.from.id));
+  const token = payload.slice(6); // убираем "login_"
+  const prisma = getPrisma();
+  const { verifyAuthToken } = await import('@/lib/auth-tokens');
 
-    // Upsert organizer
-    const organizer = await prisma.organizer.upsert({
-      where: { telegram_id: tgId },
-      update: {
-        username: ctx.from.username || null,
-        first_name: ctx.from.first_name || null,
-        ...(isSuperAdmin ? { status: 'APPROVED', isSuperAdmin: true } : {}),
-      },
-      create: {
-        telegram_id: tgId,
-        username: ctx.from.username || null,
-        first_name: ctx.from.first_name || null,
-        status: isSuperAdmin ? 'APPROVED' : 'PENDING',
-        isSuperAdmin,
-      },
-    });
+  const tgId = BigInt(ctx.from.id);
+  const superAdminIds = (process.env.SUPER_ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+  const isSuperAdmin = superAdminIds.includes(String(ctx.from.id));
 
-    const ok = verifyAuthToken(token, {
-      organizerId: organizer.id,
-      telegramId: tgId,
-      firstName: ctx.from.first_name,
-      username: ctx.from.username,
-    });
+  const organizer = await prisma.organizer.upsert({
+    where: { telegram_id: tgId },
+    update: {
+      username: ctx.from.username || null,
+      first_name: ctx.from.first_name || null,
+      ...(isSuperAdmin ? { status: 'APPROVED', isSuperAdmin: true } : {}),
+    },
+    create: {
+      telegram_id: tgId,
+      username: ctx.from.username || null,
+      first_name: ctx.from.first_name || null,
+      status: isSuperAdmin ? 'APPROVED' : 'PENDING',
+      isSuperAdmin,
+    },
+  });
 
-    if (ok) {
-      await ctx.reply(
-        `✅ Авторизация успешна!\n\nВернитесь на сайт — вход выполнен автоматически.`,
-        { parse_mode: 'HTML' }
-      );
-    } else {
-      await ctx.reply('❌ Ссылка для входа устарела. Попробуйте ещё раз на сайте.');
-    }
-    return;
+  const ok = verifyAuthToken(token, {
+    organizerId: organizer.id,
+    telegramId: tgId,
+    firstName: ctx.from.first_name,
+    username: ctx.from.username,
+  });
+
+  if (ok) {
+    await ctx.reply(
+      `✅ Авторизация успешна!\n\nВернитесь на сайт — вход выполнен автоматически.`,
+      { parse_mode: 'HTML' }
+    );
+  } else {
+    await ctx.reply('❌ Ссылка для входа устарела. Попробуйте ещё раз на сайте.');
   }
-
-  // === Обычный /start — приветствие для пользователей mini app ===
-  const event = await prisma.event.findFirst({ where: { isActive: true } }).catch(() => null);
-  const eventTitle = event?.title || 'мероприятие';
-  const repostUrl = event?.repostUrl;
-  const firstName = ctx.from?.first_name || 'друг';
-
-  return ctx.reply(
-    `👋 Привет, <b>${firstName}</b>!\n\n` +
-    `Хочешь попасть на <b>${eventTitle}</b>?\n\n` +
-    (repostUrl
-      ? `📌 Сделай репост публикации и покажи нам скриншот:\n${repostUrl}\n\n`
-      : '') +
-    `Нажми кнопку ниже, чтобы загрузить скриншот и зарегистрироваться!`,
-    {
-      parse_mode: 'HTML',
-      reply_markup: {
-        inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: APP_URL } }]],
-      },
-    }
-  );
 });
 
 // ── Callback query handler (approve/reject from admin Telegram message) ────

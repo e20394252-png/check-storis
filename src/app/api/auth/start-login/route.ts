@@ -11,7 +11,8 @@ export async function POST() {
   }
 
   const token = createAuthToken();
-  const botLink = `https://t.me/${botUsername}?start=auth_${token}`;
+  // Ссылка откроет бот и автоматически отправит /login TOKEN
+  const botLink = `https://t.me/${botUsername}?start=login_${token}`;
 
   return NextResponse.json({ token, botLink });
 }
