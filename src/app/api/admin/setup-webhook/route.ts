@@ -14,6 +14,16 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN not set' }, { status: 500 });
   }
 
+  const action = req.nextUrl.searchParams.get('action');
+
+  // ?action=info — показать текущий вебхук
+  if (action === 'info') {
+    const res = await fetch(`https://api.telegram.org/bot${token}/getWebhookInfo`);
+    const data = await res.json();
+    return NextResponse.json(data);
+  }
+
+  // По умолчанию — установить наш вебхук
   const appUrl = process.env.NEXT_PUBLIC_MINI_APP_URL || `https://${req.headers.get('host')}`;
   const webhookUrl = `${appUrl}/api/webhook/telegram`;
 
