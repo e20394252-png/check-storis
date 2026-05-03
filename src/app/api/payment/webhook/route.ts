@@ -47,6 +47,20 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Отправляем сообщение в бот чтобы запустить сценарий ЛидТех
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (botToken) {
+      const triggerText = `Оплата мероприятия`;
+      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramId.toString(),
+          text: `💳 ${triggerText}\n\n📅 ${eventTitle}\n💰 ${price} ₽ (${type === 'discount' ? 'со скидкой' : 'полная цена'})\n\n⏳ Обрабатываем вашу заявку...`,
+        }),
+      }).catch(err => console.error('[payment trigger]', err));
+    }
+
     return NextResponse.json({
       success: true,
       paymentRequestId: pr.id,
