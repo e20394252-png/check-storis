@@ -158,7 +158,11 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        alert(`Заявка на оплату ${priceValue} ₽ отправлена! Ожидайте подтверждения.`);
+        // Открываем бот с deep link — ЛидТех увидит /start pay_... и запустит сценарий
+        const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || 'check_storis_bot';
+        const deepLink = `https://t.me/${botUsername}?start=pay_${data.paymentRequestId}`;
+        window.Telegram?.WebApp?.openTelegramLink?.(deepLink);
+        window.Telegram?.WebApp?.close?.();
       } else {
         alert('Ошибка: ' + (data.error || 'неизвестная'));
       }
