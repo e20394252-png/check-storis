@@ -160,7 +160,7 @@ export default function App() {
       if (data.success) {
         // Открываем бот с deep link — пользователь отправит /start pay → ЛидТех запустит сценарий
         const botUsername = process.env.NEXT_PUBLIC_BOT_USERNAME || 'check_storis_bot';
-        window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/${botUsername}`);
+        window.Telegram?.WebApp?.openTelegramLink?.(`https://t.me/${botUsername}?start=pay`);
         window.Telegram?.WebApp?.close?.();
       } else {
         alert('Ошибка: ' + (data.error || 'неизвестная'));
