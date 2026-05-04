@@ -124,8 +124,12 @@ export default function App() {
   const events = meData?.events || [];
   const user = meData?.user;
   const now = new Date();
-  const currentEvents = events.filter(ev => !ev.date || new Date(ev.date) >= now);
-  const pastEvents = events.filter(ev => ev.date && new Date(ev.date) < now);
+  const currentEvents = events
+    .filter(ev => !ev.date || new Date(ev.date) >= now)
+    .sort((a, b) => (a.date && b.date ? new Date(a.date).getTime() - new Date(b.date).getTime() : 0));
+  const pastEvents = events
+    .filter(ev => ev.date && new Date(ev.date) < now)
+    .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
   const displayEvents = activeTab === 'current' ? currentEvents : pastEvents;
 
   if (events.length === 0) {

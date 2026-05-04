@@ -19,10 +19,9 @@ export async function GET(req: NextRequest) {
 
     const prisma = getPrisma();
 
-    // Все активные мероприятия (включая прошедшие — для вкладки "прошедшие")
+    // Все мероприятия — фронтенд разделит на актуальные и прошедшие
     const events = await prisma.event.findMany({
-      where: { isActive: true },
-      orderBy: { date: 'asc' },
+      orderBy: { date: 'desc' },
     });
 
     const user = await prisma.user.findUnique({
