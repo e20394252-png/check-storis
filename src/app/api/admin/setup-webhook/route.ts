@@ -23,6 +23,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(data);
   }
 
+  // ?action=remove — удалить наш вебхук (чтобы ЛидТех мог установить свой)
+  if (action === 'remove') {
+    const res = await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`);
+    const data = await res.json();
+    return NextResponse.json({ action: 'removed', telegramResponse: data });
+  }
+
   // По умолчанию — установить наш вебхук
   const appUrl = process.env.NEXT_PUBLIC_MINI_APP_URL || `https://${req.headers.get('host')}`;
   const webhookUrl = `${appUrl}/api/webhook/telegram`;
