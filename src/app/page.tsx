@@ -162,9 +162,8 @@ export default function App() {
       });
       const data = await res.json();
       if (data.success) {
-        // Открываем виджет ЛидТех для оплаты и закрываем мини-апп
-        window.Telegram?.WebApp?.openLink?.('https://app.leadteh.ru/w/fKXkC');
-        setTimeout(() => window.Telegram?.WebApp?.close?.(), 300);
+        // Мини-апп закрывается, бот уже отправил ссылку на оплату в чат
+        window.Telegram?.WebApp?.close?.();
       } else {
         alert('Ошибка: ' + (data.error || 'неизвестная'));
       }

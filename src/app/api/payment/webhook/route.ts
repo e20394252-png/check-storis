@@ -47,6 +47,24 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    // Бот отправляет ссылку на оплату в чат
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const paymentUrl = process.env.LIDTECH_PAYMENT_URL || 'https://app.leadteh.ru/w/fKXkC';
+    if (botToken) {
+      fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramId.toString(),
+          text: `💳 Заявка на оплату оформлена!\n\n📅 ${eventTitle}\n💰 ${price} ₽ ${type === 'discount' ? '(со скидкой)' : ''}\n\n👇 Нажмите для оплаты:`,
+          parse_mode: 'HTML',
+          reply_markup: {
+            inline_keyboard: [[{ text: '💳 Перейти к оплате', url: paymentUrl }]],
+          },
+        }),
+      }).catch(err => console.error('[payment msg]', err));
+    }
+
     return NextResponse.json({
       success: true,
       paymentRequestId: pr.id,
