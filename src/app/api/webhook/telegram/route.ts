@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
       await bot.handleUpdate(body);
     } else {
       // Всё остальное — проксируем в ЛидТех
-      const lidtechWebhook = process.env.LIDTECH_BOT_WEBHOOK_URL;
+      const lidtechWebhook = process.env.LIDTECH_BOT_WEBHOOK_URL || 'https://b860998.leadteh.ru/webhooks/telegram/610732:jHNcejZ9JzDkhaV6u48fWNm5SrkBj8Z6H2fLqH7JhqVrmN0SSPgA3YiSnTe1NtKl';
       if (lidtechWebhook) {
         fetch(lidtechWebhook, {
           method: 'POST',
