@@ -46,6 +46,17 @@ export function escapeHtml(text: string): string {
     .replace(/>/g, '&gt;');
 }
 
+/** Конвертирует markdown-разметку из описания мероприятия в Telegram HTML */
+export function markdownToTgHtml(text: string): string {
+  if (!text) return '';
+  return escapeHtml(text)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/__(.+?)__/g, '<i>$1</i>')
+    .replace(/~~(.+?)~~/g, '<s>$1</s>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2">$1</a>');
+}
+
 async function sendPhoto(
   chatId: string | number | bigint,
   base64Image: string,
@@ -184,7 +195,7 @@ export async function broadcastEventPush(
 
   const text =
     `📣 <b>${escapeHtml(event.title)}</b>\n\n` +
-    (event.description ? `${escapeHtml(event.description)}\n\n` : '') +
+    (event.description ? `${markdownToTgHtml(event.description)}\n\n` : '') +
     (dateStr ? `📅 <b>Дата:</b> ${escapeHtml(dateStr)}\n` : '') +
     (event.location ? `📍 <b>Место:</b> ${escapeHtml(event.location)}\n` : '') +
     (event.repostUrl ? `\n🔗 <a href="${escapeHtml(event.repostUrl)}">Открыть публикацию для репоста</a>\n` : '') +
