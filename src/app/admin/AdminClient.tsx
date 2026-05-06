@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 type Org = { id: string; first_name?: string|null; username?: string|null; status: string; isSuperAdmin: boolean };
 type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; _count?: { registrations: number } };
 type Reg = { id: string; status: string; proofUrl?: string|null; storyUrl?: string|null; adminNote?: string|null; createdAt: string; updatedAt: string; user: { first_name?: string|null; username?: string|null }; event: { id?: string; title?: string|null } };
-type OrgItem = { id: string; telegram_id: string; first_name?: string|null; username?: string|null; photo_url?: string|null; status: string; isSuperAdmin: boolean; createdAt: string; _count?: { events: number } };
+type OrgItem = { id: string; telegram_id: string; first_name?: string|null; username?: string|null; login?: string|null; photo_url?: string|null; status: string; isSuperAdmin: boolean; createdAt: string; _count?: { events: number } };
 
 const gold = '#c8a86e'; const warm = '#d4a853'; const cream = '#f5e6c8';
 const success = '#8fbc6a'; const error = '#c75c5c'; const muted = '#8a7a66';
@@ -211,22 +211,11 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
           <div>
             <div style={{ fontSize:12, color:muted, marginBottom:20 }}>Организаторы ({orgs.length})</div>
             {orgs.map(o => (
-              <div key={o.id} style={{ background:card, border:'1px solid rgba(200,168,110,0.12)', borderRadius:12, padding:'16px 20px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16 }}>
-                <div>
-                  <div style={{ fontWeight:700, fontSize:15 }}>{o.first_name || '—'}{o.username && <span style={{ color:muted, fontWeight:400, fontSize:13 }}> @{o.username}</span>}{o.isSuperAdmin && <span style={{ fontSize:11, color:warm, marginLeft:8 }}>👑</span>}</div>
-                  <div style={{ fontSize:11, color:muted, marginTop:2 }}>Мероприятий: {o._count?.events ?? 0} · {new Date(o.createdAt).toLocaleDateString('ru-RU')}</div>
-                </div>
-                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
-                  {o.status === 'PENDING' ? (
-                    <>
-                      <button disabled={busy===o.id} onClick={() => reviewOrg(o.id,'approve')} className="warm-btn-approve" style={{ padding:'8px 16px', fontSize:12 }}>✓ Одобрить</button>
-                      <button disabled={busy===o.id} onClick={() => reviewOrg(o.id,'reject')} className="warm-btn-reject" style={{ padding:'8px 16px', fontSize:12 }}>✗ Отклонить</button>
-                    </>
-                  ) : (
-                    <span style={{ fontSize:11, fontWeight:700, color: o.status==='APPROVED' ? success : error }}>{o.status==='APPROVED' ? '✅ Одобрен' : '❌ Отклонён'}</span>
-                  )}
-                </div>
-              </div>
+              <OrgCard key={o.id} org={o} busy={busy} onReview={reviewOrg} onUpdate={async (id, data) => {
+                setBusy(id);
+                await fetch('/api/admin/organizers', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ organizerId: id, ...data }) });
+                await load(); setBusy('');
+              }} />
             ))}
           </div>
         )}
@@ -358,6 +347,77 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
           <button onClick={submit} disabled={saving||!title} className="warm-btn-primary" style={{ padding:'13px 28px', fontSize:14 }}>{saving ? 'Сохраняем...' : event ? '💾 Сохранить' : '+ Создать'}</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Карточка организатора (с логином/паролем)
+function OrgCard({ org, busy, onReview, onUpdate }: {
+  org: OrgItem; busy: string;
+  onReview: (id: string, action: string) => void;
+  onUpdate: (id: string, data: { login?: string; password?: string }) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [editLogin, setEditLogin] = useState(org.login || '');
+  const [editPassword, setEditPassword] = useState('');
+  const [saveMsg, setSaveMsg] = useState('');
+
+  const save = async () => {
+    const data: { login?: string; password?: string } = {};
+    if (editLogin && editLogin !== org.login) data.login = editLogin;
+    if (editPassword) data.password = editPassword;
+    if (Object.keys(data).length === 0) { setEditing(false); return; }
+    onUpdate(org.id, data);
+    setSaveMsg('✅ Сохранено');
+    setEditPassword('');
+    setEditing(false);
+    setTimeout(() => setSaveMsg(''), 3000);
+  };
+
+  const smallInp: React.CSSProperties = { padding:'6px 10px', fontSize:13, borderRadius:6, border:'1px solid rgba(200,168,110,0.2)', background:'rgba(200,168,110,0.05)', color:'#f0e6d6', outline:'none', width: 140 };
+
+  return (
+    <div style={{ background: card, border:'1px solid rgba(200,168,110,0.12)', borderRadius:12, padding:'16px 20px', marginBottom:12 }}>
+      <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
+        <div>
+          <div style={{ fontWeight:700, fontSize:15 }}>
+            {org.first_name || '—'}
+            {org.username && <span style={{ color: muted, fontWeight:400, fontSize:13 }}> @{org.username}</span>}
+            {org.isSuperAdmin && <span style={{ fontSize:11, color: warm, marginLeft:8 }}>👑</span>}
+          </div>
+          <div style={{ fontSize:12, color: muted, marginTop:3 }}>
+            {org.login ? <>Логин: <b style={{ color: cream }}>{org.login}</b></> : <span style={{ fontStyle:'italic' }}>без логина (Telegram)</span>}
+            {' · '} Мероприятий: {org._count?.events ?? 0}
+            {' · '}{new Date(org.createdAt).toLocaleDateString('ru-RU')}
+          </div>
+          {saveMsg && <div style={{ fontSize:11, color: success, marginTop:4 }}>{saveMsg}</div>}
+        </div>
+        <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+          {org.status === 'PENDING' ? (
+            <>
+              <button disabled={busy===org.id} onClick={() => onReview(org.id,'approve')} className="warm-btn-approve" style={{ padding:'7px 14px', fontSize:12 }}>✓ Одобрить</button>
+              <button disabled={busy===org.id} onClick={() => onReview(org.id,'reject')} className="warm-btn-reject" style={{ padding:'7px 14px', fontSize:12 }}>✗ Отклонить</button>
+            </>
+          ) : (
+            <span style={{ fontSize:11, fontWeight:700, color: org.status==='APPROVED' ? success : error }}>{org.status==='APPROVED' ? '✅ Одобрен' : '❌ Отклонён'}</span>
+          )}
+          {!org.isSuperAdmin && (
+            <button onClick={() => setEditing(!editing)} style={{ padding:'6px 12px', fontSize:11, borderRadius:6, cursor:'pointer', background:'transparent', border:'1px solid rgba(200,168,110,0.2)', color: muted }}>
+              {editing ? '✕' : '✏️'}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {editing && (
+        <div style={{ marginTop:12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+          <input value={editLogin} onChange={e => setEditLogin(e.target.value)} placeholder="Логин" style={smallInp} />
+          <input type="password" value={editPassword} onChange={e => setEditPassword(e.target.value)} placeholder="Новый пароль" style={smallInp} />
+          <button disabled={busy===org.id} onClick={save} style={{ padding:'6px 14px', fontSize:12, borderRadius:6, cursor:'pointer', background:'rgba(143,188,106,0.15)', border:'1px solid rgba(143,188,106,0.3)', color: success, fontWeight:600 }}>
+            Сохранить
+          </button>
+        </div>
+      )}
     </div>
   );
 }

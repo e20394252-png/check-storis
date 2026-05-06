@@ -94,6 +94,20 @@ export async function POST(req: NextRequest) {
     await run('Event.price', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "price" INTEGER;`);
     await run('Event.discountPrice', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "discountPrice" INTEGER;`);
 
+    // Organizer login/password fields
+    await run('Organizer.login', `ALTER TABLE "Organizer" ADD COLUMN IF NOT EXISTS "login" TEXT;`);
+    await run('Organizer.password', `ALTER TABLE "Organizer" ADD COLUMN IF NOT EXISTS "password" TEXT;`);
+    await run('Organizer.login unique', `
+      DO $$ BEGIN
+        ALTER TABLE "Organizer" ADD CONSTRAINT "Organizer_login_key" UNIQUE ("login");
+      EXCEPTION WHEN duplicate_table THEN NULL; WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    // telegram_id может быть 0 для организаторов по логину — убираем NOT NULL если мешает
+    await run('Organizer.telegram_id nullable', `
+      ALTER TABLE "Organizer" ALTER COLUMN telegram_id DROP NOT NULL;
+    `);
+
     // Registration table
     await run('Table Registration', `
       CREATE TABLE IF NOT EXISTS "Registration" (
