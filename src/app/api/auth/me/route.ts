@@ -20,7 +20,7 @@ export async function GET() {
     botUsername: process.env.NEXT_PUBLIC_BOT_USERNAME || '',
     organizer: {
       id: organizer.id,
-      telegram_id: organizer.telegram_id.toString(),
+      telegram_id: organizer.telegram_id?.toString() || '0',
       first_name: organizer.first_name,
       username: organizer.username,
       photo_url: organizer.photo_url,

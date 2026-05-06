@@ -49,7 +49,7 @@ export async function PATCH(req: NextRequest) {
   // Уведомляем организатора через бота (если есть telegram_id)
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (botToken && updated.telegram_id && updated.telegram_id > BigInt(0)) {
-    const chatId = updated.telegram_id.toString();
+    const chatId = updated.telegram_id!.toString();
     const adminUrl = process.env.RAILWAY_PUBLIC_DOMAIN
       ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/admin`
       : 'https://check-storis-production-673a.up.railway.app/admin';
