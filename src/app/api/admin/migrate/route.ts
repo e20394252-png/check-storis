@@ -107,6 +107,10 @@ export async function POST(req: NextRequest) {
     await run('Organizer.telegram_id nullable', `
       ALTER TABLE "Organizer" ALTER COLUMN telegram_id DROP NOT NULL;
     `);
+    // Фикс: записи с telegram_id=0 → null (чтобы не блокировали unique)
+    await run('Fix telegram_id=0 to null', `
+      UPDATE "Organizer" SET telegram_id = NULL WHERE telegram_id = 0;
+    `);
 
     // Registration table
     await run('Table Registration', `
