@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
         login,
         password: hashPassword(password),
         first_name: firstName || login,
-        telegram_id: BigInt(0), // нет telegram для организаторов по логину
+        telegram_id: null, // null не нарушает unique constraint
         status: 'PENDING',
         isSuperAdmin: false,
       },
