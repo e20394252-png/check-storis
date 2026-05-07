@@ -227,3 +227,40 @@ export async function broadcastEventPush(
 
   return { sent, failed };
 }
+
+// ─── Уведомления суперадмину ──────────────────────────────────────────────
+
+function getSuperAdminIds(): string[] {
+  return (process.env.SUPER_ADMIN_IDS || '').split(',').map(s => s.trim()).filter(Boolean);
+}
+
+/** Уведомить суперадмина о новом организаторе */
+export async function notifySuperAdminNewOrganizer(organizerId: string, name: string, login: string) {
+  const ids = getSuperAdminIds();
+  if (ids.length === 0) return;
+
+  const adminUrl = APP_URL + '/admin';
+  const text =
+    `👤 <b>Новый организатор!</b>\n\n` +
+    `Имя: <b>${escapeHtml(name)}</b>\n` +
+    `Логин: <b>${escapeHtml(login)}</b>\n\n` +
+    `👉 <a href="${adminUrl}">Открыть панель</a> для одобрения`;
+
+  await Promise.all(ids.map(id => sendMessage(id, text)));
+}
+
+/** Уведомить суперадмина о новом мероприятии от организатора */
+export async function notifySuperAdminNewEvent(eventId: string, title: string, organizerName: string) {
+  const ids = getSuperAdminIds();
+  if (ids.length === 0) return;
+
+  const adminUrl = APP_URL + '/admin';
+  const text =
+    `📋 <b>Новое мероприятие на проверку!</b>\n\n` +
+    `📌 <b>${escapeHtml(title)}</b>\n` +
+    `👤 Организатор: ${escapeHtml(organizerName)}\n\n` +
+    `Мероприятие ожидает активации.\n` +
+    `👉 <a href="${adminUrl}">Открыть панель</a>`;
+
+  await Promise.all(ids.map(id => sendMessage(id, text)));
+}

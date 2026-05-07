@@ -46,6 +46,10 @@ export async function POST(req: NextRequest) {
     // Создаём сессию сразу (покажем экран "ожидание аппрува")
     await createSession(organizer.id);
 
+    // Уведомляем суперадмина о новом организаторе
+    const { notifySuperAdminNewOrganizer } = await import('@/lib/notify');
+    notifySuperAdminNewOrganizer(organizer.id, firstName || login, login).catch(console.error);
+
     return NextResponse.json({
       success: true,
       organizer: {

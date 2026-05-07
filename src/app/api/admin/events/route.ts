@@ -41,10 +41,17 @@ export async function POST(req: NextRequest) {
       imageUrl: imageUrl || null,
       price: price != null ? Number(price) : null,
       discountPrice: discountPrice != null ? Number(discountPrice) : null,
-      isActive: isActive !== false,
+      isActive: me.isSuperAdmin ? (isActive !== false) : false, // орги ждут аппрува
       organizerId: me.id,
     },
   });
+
+  // Уведомляем суперадмина о новом мероприятии от обычного орга
+  if (!me.isSuperAdmin) {
+    const { notifySuperAdminNewEvent } = await import('@/lib/notify');
+    notifySuperAdminNewEvent(event.id, title, me.first_name || me.login || 'Организатор').catch(console.error);
+  }
+
   return NextResponse.json({ event });
 }
 
