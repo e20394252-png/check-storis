@@ -57,6 +57,9 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const { id } = await params;
   try {
     const prisma = getPrisma();
+    // Каскадно удаляем связанные записи
+    await prisma.paymentRequest.deleteMany({ where: { eventId: id } });
+    await prisma.registration.deleteMany({ where: { eventId: id } });
     await prisma.event.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (err: any) {

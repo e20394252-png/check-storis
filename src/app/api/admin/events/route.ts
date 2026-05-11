@@ -101,6 +101,9 @@ export async function DELETE(req: NextRequest) {
     if (!ev || ev.organizerId !== me.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // Каскадно удаляем связанные записи перед удалением мероприятия
+  await prisma.paymentRequest.deleteMany({ where: { eventId } });
+  await prisma.registration.deleteMany({ where: { eventId } });
   await prisma.event.delete({ where: { id: eventId } });
   return NextResponse.json({ success: true });
 }

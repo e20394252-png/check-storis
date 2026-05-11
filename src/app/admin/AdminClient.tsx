@@ -21,6 +21,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState('');
   const [pushState, setPushState] = useState<Record<string, { status: string; msg?: string }>>({});
+  const [archiveOpen, setArchiveOpen] = useState(false);
 
   const load = async () => {
     const [eRes, rRes] = await Promise.all([
@@ -169,42 +170,82 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
         {tab === 'rejected' && <RegList rows={rejected} color={error} empty="Нет отклонённых" />}
 
         {/* МЕРОПРИЯТИЯ */}
-        {tab === 'events' && (
-          <div>
-            {(editEv || creating) ? (
-              <EventForm event={editEv} onSave={saveEvent} onCancel={() => { setEditEv(null); setCreating(false); }} saving={busy==='save'} />
-            ) : (
-              <div>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
-                  <div style={{ fontSize:12, color:muted }}>Мероприятия ({events.length})</div>
-                  <button onClick={() => setCreating(true)} style={{ padding:'9px 18px', fontSize:13, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg,rgba(200,168,110,0.15),rgba(212,168,83,0.15))', border:'1px solid rgba(200,168,110,0.4)', color:gold, cursor:'pointer' }}>+ Создать</button>
+        {tab === 'events' && (() => {
+          const now = Date.now();
+          const DAY = 24 * 60 * 60 * 1000;
+          const activeEvents = events.filter(ev => {
+            if (!ev.date) return true;
+            return now - new Date(ev.date).getTime() < DAY;
+          });
+          const archivedEvents = events.filter(ev => {
+            if (!ev.date) return false;
+            return now - new Date(ev.date).getTime() >= DAY;
+          });
+
+          const renderEventCard = (ev: Ev) => (
+            <div key={ev.id} style={{ background:card, border:`1px solid ${ev.isActive ? 'rgba(200,168,110,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius:12, padding:'16px 20px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
+                  <span style={{ fontWeight:700, fontSize:15 }}>{ev.title}</span>
+                  <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background: ev.isActive ? 'rgba(143,188,106,0.12)' : 'rgba(255,255,255,0.05)', color: ev.isActive ? success : muted }}>{ev.isActive ? 'АКТИВНО' : 'СКРЫТО'}</span>
                 </div>
-                {events.map(ev => (
-                  <div key={ev.id} style={{ background:card, border:`1px solid ${ev.isActive ? 'rgba(200,168,110,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius:12, padding:'16px 20px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap' }}>
-                    <div style={{ flex:1, minWidth:0 }}>
-                      <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
-                        <span style={{ fontWeight:700, fontSize:15 }}>{ev.title}</span>
-                        <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background: ev.isActive ? 'rgba(143,188,106,0.12)' : 'rgba(255,255,255,0.05)', color: ev.isActive ? success : muted }}>{ev.isActive ? 'АКТИВНО' : 'СКРЫТО'}</span>
-                      </div>
-                      <div style={{ fontSize:12, color:muted }}>
-                        {ev.date && `📅 ${new Date(ev.date).toLocaleDateString('ru-RU')} · `}
-                        {ev.location && `📍 ${ev.location} · `}
-                        <span style={{ color:gold }}>заявок: {ev._count?.registrations ?? 0}</span>
-                      </div>
-                    </div>
-                    <div style={{ display:'flex', gap:8 }}>
-                      <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
-                        {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
-                      </button>
-                      <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
-                      <button onClick={() => delEvent(ev.id)} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(199,92,92,0.07)', border:'1px solid rgba(199,92,92,0.2)', color:error, cursor:'pointer' }}>🗑</button>
-                    </div>
-                  </div>
-                ))}
+                <div style={{ fontSize:12, color:muted }}>
+                  {ev.date && `📅 ${new Date(ev.date).toLocaleDateString('ru-RU')} · `}
+                  {ev.location && `📍 ${ev.location} · `}
+                  <span style={{ color:gold }}>заявок: {ev._count?.registrations ?? 0}</span>
+                </div>
               </div>
-            )}
-          </div>
-        )}
+              <div style={{ display:'flex', gap:8 }}>
+                <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
+                  {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
+                </button>
+                <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
+                <button onClick={() => delEvent(ev.id)} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(199,92,92,0.07)', border:'1px solid rgba(199,92,92,0.2)', color:error, cursor:'pointer' }}>🗑</button>
+              </div>
+            </div>
+          );
+
+          return (
+            <div>
+              {(editEv || creating) ? (
+                <EventForm event={editEv} onSave={saveEvent} onCancel={() => { setEditEv(null); setCreating(false); }} saving={busy==='save'} />
+              ) : (
+                <div>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
+                    <div style={{ fontSize:12, color:muted }}>Мероприятия ({activeEvents.length})</div>
+                    <button onClick={() => setCreating(true)} style={{ padding:'9px 18px', fontSize:13, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg,rgba(200,168,110,0.15),rgba(212,168,83,0.15))', border:'1px solid rgba(200,168,110,0.4)', color:gold, cursor:'pointer' }}>+ Создать</button>
+                  </div>
+                  {activeEvents.length === 0 && (
+                    <div style={{ textAlign:'center', padding:'40px 0', color:muted, fontSize:14 }}>Нет актуальных мероприятий</div>
+                  )}
+                  {activeEvents.map(renderEventCard)}
+
+                  {/* АРХИВ */}
+                  {archivedEvents.length > 0 && (
+                    <div style={{ marginTop:24 }}>
+                      <button
+                        onClick={() => setArchiveOpen(!archiveOpen)}
+                        style={{
+                          width:'100%', padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between',
+                          background:'rgba(200,168,110,0.04)', border:'1px solid rgba(200,168,110,0.12)', borderRadius:10,
+                          color:muted, fontSize:13, fontWeight:600, cursor:'pointer', transition:'all 0.2s'
+                        }}
+                      >
+                        <span>📦 Архив ({archivedEvents.length})</span>
+                        <span style={{ transform: archiveOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.25s ease', fontSize:16, lineHeight:1 }}>▼</span>
+                      </button>
+                      {archiveOpen && (
+                        <div style={{ marginTop:12 }}>
+                          {archivedEvents.map(renderEventCard)}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ОРГАНИЗАТОРЫ (суперадмин) */}
         {tab === 'organizers' && organizer.isSuperAdmin && (
