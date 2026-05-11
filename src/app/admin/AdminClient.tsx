@@ -22,6 +22,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const [busy, setBusy] = useState('');
   const [pushState, setPushState] = useState<Record<string, { status: string; msg?: string }>>({});
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   const load = async () => {
     const [eRes, rRes] = await Promise.all([
@@ -59,9 +60,16 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   };
 
   const delEvent = async (id: string) => {
-    if (!confirm('Удалить мероприятие?')) return;
+    if (deleteConfirm !== id) {
+      setDeleteConfirm(id);
+      setTimeout(() => setDeleteConfirm(prev => prev === id ? null : prev), 4000);
+      return;
+    }
+    setDeleteConfirm(null);
+    setBusy(id);
     await fetch('/api/admin/events', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: id }) });
     await load();
+    setBusy('');
   };
 
   const pushEvent = async (id: string) => {
@@ -200,7 +208,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                   {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
                 </button>
                 <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
-                <button onClick={() => delEvent(ev.id)} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(199,92,92,0.07)', border:'1px solid rgba(199,92,92,0.2)', color:error, cursor:'pointer' }}>🗑</button>
+                <button onClick={() => delEvent(ev.id)} disabled={busy===ev.id} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background: deleteConfirm===ev.id ? 'rgba(199,92,92,0.2)' : 'rgba(199,92,92,0.07)', border: `1px solid ${deleteConfirm===ev.id ? 'rgba(199,92,92,0.5)' : 'rgba(199,92,92,0.2)'}`, color:error, cursor:'pointer', transition:'all 0.2s', whiteSpace:'nowrap' }}>{busy===ev.id ? '...' : deleteConfirm===ev.id ? '❓ Точно?' : '🗑'}</button>
               </div>
             </div>
           );
