@@ -305,6 +305,31 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
   const [active, setActive] = useState(event?.isActive !== false);
   const [img, setImg] = useState(event?.imageUrl || '');
   const imgRef = useRef<HTMLInputElement>(null);
+  const [parseUrl, setParseUrl] = useState('');
+  const [parsing, setParsing] = useState(false);
+  const [parseError, setParseError] = useState('');
+
+  const handleParse = async () => {
+    if (!parseUrl.trim()) return;
+    setParsing(true); setParseError('');
+    try {
+      const res = await fetch('/api/admin/parse-link', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: parseUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) { setParseError(data.error || 'Ошибка'); setParsing(false); return; }
+      if (data.title) setTitle(data.title);
+      if (data.description) setDesc(data.description);
+      if (data.price) setPrice(String(data.price));
+      if (data.discountPrice) setDiscountPrice(String(data.discountPrice));
+      if (data.date) setDate(data.date.slice(0, 16));
+      if (data.location) setLoc(data.location);
+      if (data.imageUrl) setImg(data.imageUrl);
+      if (!url) setUrl(parseUrl.trim());
+    } catch { setParseError('Ошибка сети'); }
+    setParsing(false);
+  };
 
   const onImg = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]; if (!f) return;
@@ -335,6 +360,29 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
         <div style={{ fontSize:12, color:muted }}>{event ? 'Редактировать' : 'Новое мероприятие'}</div>
         <button onClick={onCancel} style={{ fontSize:12, color:muted, background:'none', border:'none', cursor:'pointer' }}>← Назад</button>
       </div>
+
+      {/* Парсинг ссылки */}
+      {!event && (
+        <div style={{ marginBottom:20, padding:'16px 18px', background:'rgba(200,168,110,0.04)', border:'1px solid rgba(200,168,110,0.15)', borderRadius:10 }}>
+          <label style={{ fontSize:11, color:gold, display:'block', marginBottom:8, fontWeight:600 }}>🔗 ВСТАВЬ ССЫЛКУ НА ПОСТ — ЗАПОЛНИМ АВТОМАТИЧЕСКИ</label>
+          <div style={{ display:'flex', gap:8 }}>
+            <input
+              value={parseUrl} onChange={e => setParseUrl(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleParse()}
+              placeholder="https://t.me/channel/123"
+              style={{ ...inp, flex:1 }}
+            />
+            <button onClick={handleParse} disabled={parsing || !parseUrl.trim()} style={{
+              padding:'10px 18px', fontSize:13, fontWeight:700, borderRadius:8, whiteSpace:'nowrap',
+              background: parsing ? 'rgba(200,168,110,0.08)' : 'linear-gradient(135deg,rgba(200,168,110,0.15),rgba(212,168,83,0.15))',
+              border:'1px solid rgba(200,168,110,0.4)', color:gold, cursor: parsing ? 'wait' : 'pointer',
+            }}>
+              {parsing ? '⏳ Распознаём...' : '✨ Распознать'}
+            </button>
+          </div>
+          {parseError && <div style={{ marginTop:8, fontSize:12, color:error }}>❌ {parseError}</div>}
+        </div>
+      )}
       <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
         <div style={{ gridColumn:'1/-1' }}>
           <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>НАЗВАНИЕ *</label>
