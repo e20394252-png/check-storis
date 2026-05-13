@@ -317,8 +317,9 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: parseUrl.trim() }),
       });
-      const data = await res.json();
-      if (!res.ok) { setParseError(data.error || 'Ошибка'); setParsing(false); return; }
+      let data: any;
+      try { data = await res.json(); } catch { data = { error: `Сервер вернул ${res.status}` }; }
+      if (!res.ok) { setParseError(data.error || `Ошибка ${res.status}`); setParsing(false); return; }
       if (data.title) setTitle(data.title);
       if (data.description) setDesc(data.description);
       if (data.price) setPrice(String(data.price));
@@ -327,7 +328,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
       if (data.location) setLoc(data.location);
       if (data.imageUrl) setImg(data.imageUrl);
       if (!url) setUrl(parseUrl.trim());
-    } catch { setParseError('Ошибка сети'); }
+    } catch (e: any) { setParseError(e.message || 'Ошибка сети — попробуй ещё раз'); }
     setParsing(false);
   };
 

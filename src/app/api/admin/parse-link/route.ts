@@ -1,27 +1,55 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSession } from '@/lib/admin-session';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 30;
+
+// GET — quick check that route exists and key is set
+export async function GET() {
+  const hasKey = !!process.env.OPENAI_API_KEY;
+  return NextResponse.json({ ok: true, hasOpenAiKey: hasKey });
+}
 
 export async function POST(req: NextRequest) {
-  const me = await getSession();
+  // Auth check — inline to avoid cookie issues crashing
+  let me: any = null;
+  try {
+    const { getSession } = await import('@/lib/admin-session');
+    me = await getSession();
+  } catch (e: any) {
+    console.error('Session error:', e.message);
+  }
   if (!me) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const { url } = await req.json();
+  let body: any;
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
+  }
+
+  const { url } = body;
   if (!url) return NextResponse.json({ error: 'URL required' }, { status: 400 });
 
   try {
     // Normalize URL
     let embedUrl = url.trim();
     if (!embedUrl.startsWith('http')) embedUrl = 'https://' + embedUrl;
-    const u = new URL(embedUrl);
+
+    let u: URL;
+    try {
+      u = new URL(embedUrl);
+    } catch {
+      return NextResponse.json({ error: 'Невалидный URL' }, { status: 400 });
+    }
     u.searchParams.set('embed', '1');
 
     // Fetch Telegram embed page
     const res = await fetch(u.toString(), {
-      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; bot)' },
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
     });
-    if (!res.ok) return NextResponse.json({ error: 'Failed to fetch link' }, { status: 400 });
+    if (!res.ok) {
+      return NextResponse.json({ error: `Telegram вернул ${res.status}` }, { status: 400 });
+    }
     const html = await res.text();
 
     // Extract post text from embed HTML
@@ -52,12 +80,17 @@ export async function POST(req: NextRequest) {
     const imageUrl = imgMatch ? imgMatch[1] : null;
 
     if (!postText) {
-      return NextResponse.json({ error: 'Не удалось извлечь текст из поста' }, { status: 400 });
+      return NextResponse.json({
+        error: 'Не удалось извлечь текст из поста. Возможно, пост приватный.',
+        debug: { htmlLength: html.length, hasText: !!textMatch }
+      }, { status: 400 });
     }
 
     // Call OpenAI gpt-4o-mini
     const apiKey = process.env.OPENAI_API_KEY;
-    if (!apiKey) return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 });
+    if (!apiKey) {
+      return NextResponse.json({ error: 'OPENAI_API_KEY не настроен в Railway Variables' }, { status: 500 });
+    }
 
     const aiRes = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -86,13 +119,19 @@ export async function POST(req: NextRequest) {
     });
 
     if (!aiRes.ok) {
-      const err = await aiRes.text();
-      console.error('OpenAI error:', err);
-      return NextResponse.json({ error: 'AI parsing failed' }, { status: 500 });
+      const errText = await aiRes.text();
+      console.error('OpenAI error:', aiRes.status, errText);
+      return NextResponse.json({ error: `OpenAI ошибка: ${aiRes.status}` }, { status: 500 });
     }
 
     const aiData = await aiRes.json();
-    const parsed = JSON.parse(aiData.choices[0].message.content);
+
+    let parsed: any;
+    try {
+      parsed = JSON.parse(aiData.choices[0].message.content);
+    } catch {
+      return NextResponse.json({ error: 'AI вернул невалидный JSON', raw: aiData.choices[0].message.content }, { status: 500 });
+    }
 
     return NextResponse.json({
       ...parsed,
@@ -101,6 +140,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: any) {
     console.error('parse-link error:', err);
-    return NextResponse.json({ error: err.message || 'Parse failed' }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'Неизвестная ошибка' }, { status: 500 });
   }
 }
