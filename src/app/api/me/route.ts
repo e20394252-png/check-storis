@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 
     // Все мероприятия — фронтенд разделит на актуальные и прошедшие
     const events = await prisma.event.findMany({
-      orderBy: { date: 'desc' },
+      orderBy: { createdAt: 'desc' },
     });
 
     const user = await prisma.user.findUnique({

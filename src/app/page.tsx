@@ -127,7 +127,7 @@ export default function App() {
   const DAY = 24 * 60 * 60 * 1000;
   const currentEvents = events
     .filter(ev => !ev.date || nowMs - new Date(ev.date).getTime() < DAY)
-    .sort((a, b) => (a.date && b.date ? new Date(a.date).getTime() - new Date(b.date).getTime() : 0));
+;
   const archivedEvents = events
     .filter(ev => ev.date && nowMs - new Date(ev.date).getTime() >= DAY)
     .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
