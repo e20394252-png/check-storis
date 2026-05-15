@@ -9,7 +9,7 @@ export async function GET() {
     const prisma = getPrisma();
     const events = await prisma.event.findMany({
       where: { isActive: true },
-      orderBy: { date: 'asc' },
+      orderBy: { createdAt: 'desc' },
       select: {
         id: true,
         title: true,
