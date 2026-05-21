@@ -16,6 +16,7 @@ model User {
   updatedAt   DateTime @updatedAt
 
   registrations Registration[]
+  wallet        UserWallet?
 }
 
 model Organizer {
@@ -31,7 +32,8 @@ model Organizer {
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
-  events Event[]
+  events  Event[]
+  balance OrganizerBalance?
 }
 
 enum OrganizerStatus {
@@ -55,6 +57,17 @@ model Event {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // === Платный репост ===
+  isPaidRepost     Boolean  @default(false)
+  repostRewardUsdt Float?                     // оплата за 1 репост (USDT)
+  repostsNeeded    Int?                       // сколько репостов нужно
+  repostsFilled    Int      @default(0)       // сколько уже одобрено
+  campaignBudget   Float?                     // бюджет без комиссии (USDT)
+  campaignTotal    Float?                     // бюджет + 20% комиссия (USDT)
+  campaignStatus   String?                    // null | 'draft' | 'pending_payment' | 'active' | 'paused' | 'completed'
+  invoiceId        String?                    // CryptoBot Invoice ID
+  invoiceUrl       String?                    // URL для оплаты
+
   organizer       Organizer?       @relation(fields: [organizerId], references: [id])
   registrations   Registration[]
   paymentRequests PaymentRequest[]
@@ -68,6 +81,7 @@ model Registration {
   proofUrl  String?
   storyUrl  String?
   adminNote String?
+  paidAmount Float?            // USDT начислено юзеру (null = бесплатное)
   createdAt DateTime           @default(now())
   updatedAt DateTime           @updatedAt
 
@@ -96,4 +110,44 @@ model PaymentRequest {
   createdAt   DateTime @default(now())
 
   event Event @relation(fields: [eventId], references: [id])
+}
+
+// === Платные репосты: кошельки и выводы ===
+
+model UserWallet {
+  id          String   @id @default(uuid())
+  userId      String   @unique
+  balance     Float    @default(0)      // USDT доступно к выводу
+  totalEarned Float    @default(0)      // всего заработано
+  totalPaid   Float    @default(0)      // всего выведено
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  withdrawals Withdrawal[]
+}
+
+model Withdrawal {
+  id         String   @id @default(uuid())
+  walletId   String
+  amount     Float                           // USDT
+  status     String   @default("pending")    // pending | completed | failed
+  transferId String?                         // CryptoBot transfer_id
+  error      String?                         // ошибка при неудаче
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  wallet     UserWallet @relation(fields: [walletId], references: [id])
+}
+
+model OrganizerBalance {
+  id             String   @id @default(uuid())
+  organizerId    String   @unique
+  balance        Float    @default(0)   // USDT — остаток
+  totalDeposited Float    @default(0)   // всего внесено
+  totalSpent     Float    @default(0)   // всего потрачено на выплаты
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organizer      Organizer @relation(fields: [organizerId], references: [id])
 }

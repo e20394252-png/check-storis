@@ -47,9 +47,26 @@ export async function POST(req: NextRequest) {
     });
 
     // 4. Verify event exists
-    const event = await prisma.event.findUnique({ where: { id: eventId } });
+    const event = await prisma.event.findUnique({
+      where: { id: eventId },
+      include: { organizer: true },
+    });
     if (!event) {
       return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+
+    // 4.1 For paid repost campaigns — extra validation
+    if (event.isPaidRepost) {
+      if (event.campaignStatus !== 'active') {
+        return NextResponse.json({ error: 'Campaign is not active' }, { status: 400 });
+      }
+      if (event.repostsNeeded && event.repostsFilled >= event.repostsNeeded) {
+        return NextResponse.json({ error: 'Campaign slots are full' }, { status: 400 });
+      }
+      // Story URL is required for paid reposts
+      if (!storyUrl) {
+        return NextResponse.json({ error: 'Story link is required for paid campaigns' }, { status: 400 });
+      }
     }
 
     // 5. Build proof URL (store as base64 data URL)
@@ -85,9 +102,22 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // 7. Notify admin (fire-and-forget)
+    // 7. Notify: for paid events → organizer, for regular events → admin
     const displayName = tgUser.first_name || tgUser.username || 'Пользователь';
-    notifyAdminNewRegistration(registration.id, displayName, tgUser.username, proofUrl).catch(console.error);
+
+    if (event.isPaidRepost && event.organizer?.telegram_id) {
+      const { notifyOrgNewPaidRepost } = await import('@/lib/notify');
+      notifyOrgNewPaidRepost(
+        event.organizer.telegram_id,
+        registration.id,
+        displayName,
+        tgUser.username,
+        storyUrl,
+        event.title,
+      ).catch(console.error);
+    } else {
+      notifyAdminNewRegistration(registration.id, displayName, tgUser.username, proofUrl).catch(console.error);
+    }
 
     return NextResponse.json({ success: true, status: 'pending' });
   } catch (err) {

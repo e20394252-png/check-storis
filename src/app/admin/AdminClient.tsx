@@ -2,8 +2,8 @@
 import { useEffect, useState, useRef } from 'react';
 
 type Org = { id: string; first_name?: string|null; username?: string|null; status: string; isSuperAdmin: boolean };
-type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; _count?: { registrations: number } };
-type Reg = { id: string; status: string; proofUrl?: string|null; storyUrl?: string|null; adminNote?: string|null; createdAt: string; updatedAt: string; user: { first_name?: string|null; username?: string|null }; event: { id?: string; title?: string|null } };
+type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; isPaidRepost?: boolean; repostRewardUsdt?: number|null; repostsNeeded?: number|null; repostsFilled?: number; campaignBudget?: number|null; campaignTotal?: number|null; campaignStatus?: string|null; invoiceUrl?: string|null; _count?: { registrations: number } };
+type Reg = { id: string; status: string; proofUrl?: string|null; storyUrl?: string|null; adminNote?: string|null; paidAmount?: number|null; createdAt: string; updatedAt: string; user: { first_name?: string|null; username?: string|null }; event: { id?: string; title?: string|null; isPaidRepost?: boolean; repostRewardUsdt?: number|null } };
 type OrgItem = { id: string; telegram_id: string; first_name?: string|null; username?: string|null; login?: string|null; photo_url?: string|null; status: string; isSuperAdmin: boolean; createdAt: string; _count?: { events: number } };
 
 const gold = '#c8a86e'; const warm = '#d4a853'; const cream = '#f5e6c8';
@@ -190,26 +190,118 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             return now - new Date(ev.date).getTime() >= DAY;
           });
 
+          const handleCampaignAction = async (evId: string, action: string) => {
+            setBusy(evId);
+            await fetch('/api/admin/events', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: evId, action }) });
+            await load(); setBusy('');
+          };
+
+          const handlePayCampaign = async (evId: string, extraSlots?: number) => {
+            setBusy(evId);
+            try {
+              const res = await fetch('/api/cryptobot/create-invoice', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: evId, additionalSlots: extraSlots || 0 }) });
+              const data = await res.json();
+              if (data.invoiceUrl) window.open(data.invoiceUrl, '_blank');
+              else alert(data.error || 'Ошибка создания счёта');
+            } catch { alert('Ошибка сети'); }
+            await load(); setBusy('');
+          };
+
+          const campaignStatusLabel = (s?: string|null) => {
+            switch(s) {
+              case 'draft': return { text: 'ЧЕРНОВИК', color: muted };
+              case 'pending_payment': return { text: 'ОЖИДАЕТ ОПЛАТЫ', color: warm };
+              case 'active': return { text: 'АКТИВНА', color: success };
+              case 'paused': return { text: 'ПРИОСТАНОВЛЕНА', color: warm };
+              case 'completed': return { text: 'ЗАВЕРШЕНА', color: '#8a9dbc' };
+              default: return null;
+            }
+          };
+
           const renderEventCard = (ev: Ev) => (
-            <div key={ev.id} style={{ background:card, border:`1px solid ${ev.isActive ? 'rgba(200,168,110,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius:12, padding:'16px 20px', marginBottom:12, display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap' }}>
-              <div style={{ flex:1, minWidth:0 }}>
-                <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4 }}>
-                  <span style={{ fontWeight:700, fontSize:15 }}>{ev.title}</span>
-                  <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background: ev.isActive ? 'rgba(143,188,106,0.12)' : 'rgba(255,255,255,0.05)', color: ev.isActive ? success : muted }}>{ev.isActive ? 'АКТИВНО' : 'СКРЫТО'}</span>
+            <div key={ev.id} style={{ background:card, border:`1px solid ${ev.isActive ? 'rgba(200,168,110,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius:12, padding:'16px 20px', marginBottom:12 }}>
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+                <div style={{ flex:1, minWidth:0 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
+                    <span style={{ fontWeight:700, fontSize:15 }}>{ev.title}</span>
+                    {ev.isPaidRepost && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background:'rgba(212,168,83,0.15)', color:warm }}>💰 ПЛАТНЫЙ</span>}
+                    <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background: ev.isActive ? 'rgba(143,188,106,0.12)' : 'rgba(255,255,255,0.05)', color: ev.isActive ? success : muted }}>{ev.isActive ? 'АКТИВНО' : 'СКРЫТО'}</span>
+                    {ev.isPaidRepost && ev.campaignStatus && (() => {
+                      const cs = campaignStatusLabel(ev.campaignStatus);
+                      return cs ? <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background:`${cs.color}18`, color:cs.color }}>{cs.text}</span> : null;
+                    })()}
+                  </div>
+                  <div style={{ fontSize:12, color:muted }}>
+                    {ev.date && `📅 ${new Date(ev.date).toLocaleDateString('ru-RU')} · `}
+                    {ev.location && `📍 ${ev.location} · `}
+                    <span style={{ color:gold }}>заявок: {ev._count?.registrations ?? 0}</span>
+                  </div>
                 </div>
-                <div style={{ fontSize:12, color:muted }}>
-                  {ev.date && `📅 ${new Date(ev.date).toLocaleDateString('ru-RU')} · `}
-                  {ev.location && `📍 ${ev.location} · `}
-                  <span style={{ color:gold }}>заявок: {ev._count?.registrations ?? 0}</span>
+                <div style={{ display:'flex', gap:8 }}>
+                  <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
+                    {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
+                  </button>
+                  <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
+                  <button onClick={() => delEvent(ev.id)} disabled={busy===ev.id} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background: deleteConfirm===ev.id ? 'rgba(199,92,92,0.2)' : 'rgba(199,92,92,0.07)', border: `1px solid ${deleteConfirm===ev.id ? 'rgba(199,92,92,0.5)' : 'rgba(199,92,92,0.2)'}`, color:error, cursor:'pointer', transition:'all 0.2s', whiteSpace:'nowrap' }}>{busy===ev.id ? '...' : deleteConfirm===ev.id ? '❓ Точно?' : '🗑'}</button>
                 </div>
               </div>
-              <div style={{ display:'flex', gap:8 }}>
-                <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
-                  {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
-                </button>
-                <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
-                <button onClick={() => delEvent(ev.id)} disabled={busy===ev.id} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background: deleteConfirm===ev.id ? 'rgba(199,92,92,0.2)' : 'rgba(199,92,92,0.07)', border: `1px solid ${deleteConfirm===ev.id ? 'rgba(199,92,92,0.5)' : 'rgba(199,92,92,0.2)'}`, color:error, cursor:'pointer', transition:'all 0.2s', whiteSpace:'nowrap' }}>{busy===ev.id ? '...' : deleteConfirm===ev.id ? '❓ Точно?' : '🗑'}</button>
-              </div>
+              {/* Paid campaign controls */}
+              {ev.isPaidRepost && (
+                <div style={{ marginTop:12, padding:'12px 16px', background:'rgba(212,168,83,0.05)', border:'1px solid rgba(212,168,83,0.15)', borderRadius:10 }}>
+                  <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, flexWrap:'wrap', gap:8 }}>
+                    <div style={{ fontSize:12, color:warm }}>
+                      💰 {ev.repostRewardUsdt} USDT за репост · {ev.repostsFilled || 0}/{ev.repostsNeeded || 0} репостов
+                    </div>
+                    <div style={{ fontSize:11, color:muted }}>
+                      Бюджет: {ev.campaignBudget} USDT · Итого: {ev.campaignTotal} USDT
+                    </div>
+                  </div>
+                  {/* Progress bar */}
+                  {ev.repostsNeeded && ev.repostsNeeded > 0 && (
+                    <div style={{ height:6, background:'rgba(255,255,255,0.06)', borderRadius:3, marginBottom:10, overflow:'hidden' }}>
+                      <div style={{ height:'100%', width:`${Math.min(100, ((ev.repostsFilled || 0) / ev.repostsNeeded) * 100)}%`, background:`linear-gradient(90deg, ${warm}, ${success})`, borderRadius:3, transition:'width 0.3s' }} />
+                    </div>
+                  )}
+                  <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
+                    {ev.campaignStatus === 'draft' && (
+                      <button onClick={() => handlePayCampaign(ev.id)} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg, rgba(212,168,83,0.2), rgba(200,168,110,0.2))', border:'1px solid rgba(212,168,83,0.5)', color:warm, cursor:'pointer' }}>
+                        {busy===ev.id ? '...' : '💳 Оплатить кампанию'}
+                      </button>
+                    )}
+                    {ev.campaignStatus === 'pending_payment' && ev.invoiceUrl && (
+                      <a href={ev.invoiceUrl} target="_blank" rel="noopener noreferrer" style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(212,168,83,0.12)', border:'1px solid rgba(212,168,83,0.4)', color:warm, textDecoration:'none' }}>
+                        💳 Перейти к оплате
+                      </a>
+                    )}
+                    {ev.campaignStatus === 'active' && (
+                      <>
+                        <button onClick={() => handleCampaignAction(ev.id, 'pause')} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:600, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.2)', color:muted, cursor:'pointer' }}>
+                          ⏸ Приостановить
+                        </button>
+                        <button onClick={() => {
+                          const slots = prompt('Сколько сторис докупить?');
+                          if (slots && Number(slots) > 0) handlePayCampaign(ev.id, Number(slots));
+                        }} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:600, borderRadius:8, background:'rgba(143,188,106,0.08)', border:'1px solid rgba(143,188,106,0.2)', color:success, cursor:'pointer' }}>
+                          ➕ Докупить
+                        </button>
+                      </>
+                    )}
+                    {ev.campaignStatus === 'paused' && (
+                      <button onClick={() => handleCampaignAction(ev.id, 'resume')} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(143,188,106,0.12)', border:'1px solid rgba(143,188,106,0.3)', color:success, cursor:'pointer' }}>
+                        ▶ Возобновить
+                      </button>
+                    )}
+                    {ev.campaignStatus === 'completed' && (
+                      <button onClick={() => {
+                        const slots = prompt('Сколько сторис докупить?');
+                        if (slots && Number(slots) > 0) handlePayCampaign(ev.id, Number(slots));
+                      }} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:600, borderRadius:8, background:'rgba(143,188,106,0.08)', border:'1px solid rgba(143,188,106,0.2)', color:success, cursor:'pointer' }}>
+                        ➕ Докупить ещё
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           );
 
@@ -304,6 +396,10 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
   const [discountPrice, setDiscountPrice] = useState(event?.discountPrice?.toString() || '');
   const [active, setActive] = useState(event?.isActive !== false);
   const [img, setImg] = useState(event?.imageUrl || '');
+  // Paid repost
+  const [isPaidRepost, setIsPaidRepost] = useState(event?.isPaidRepost || false);
+  const [rewardUsdt, setRewardUsdt] = useState(event?.repostRewardUsdt?.toString() || '');
+  const [repostsNeeded, setRepostsNeeded] = useState(event?.repostsNeeded?.toString() || '');
   const imgRef = useRef<HTMLInputElement>(null);
   const [parseUrl, setParseUrl] = useState('');
   const [parsing, setParsing] = useState(false);
@@ -353,7 +449,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
     setDesc(desc.substring(0, s) + wrap + desc.substring(e));
   };
 
-  const submit = () => onSave({ title, description:desc||null, date:date||null, location:loc||null, repostUrl:url||null, isActive:active, imageUrl:img||null, price: price ? Number(price) : null, discountPrice: discountPrice ? Number(discountPrice) : null });
+  const submit = () => onSave({ title, description:desc||null, date:date||null, location:loc||null, repostUrl:url||null, isActive:active, imageUrl:img||null, price: price ? Number(price) : null, discountPrice: discountPrice ? Number(discountPrice) : null, isPaidRepost, repostRewardUsdt: isPaidRepost && rewardUsdt ? Number(rewardUsdt) : null, repostsNeeded: isPaidRepost && repostsNeeded ? Number(repostsNeeded) : null });
 
   return (
     <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:24 }}>
@@ -440,6 +536,43 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
             <input type="checkbox" checked={active} onChange={e=>setActive(e.target.checked)} style={{ width:16, height:16, accentColor:gold }} />
             Активно (видно пользователям)
           </label>
+        </div>
+        {/* Paid repost section */}
+        <div style={{ gridColumn:'1/-1' }}>
+          <div style={{ padding:'16px 18px', background: isPaidRepost ? 'rgba(212,168,83,0.06)' : 'rgba(200,168,110,0.03)', border:`1px solid ${isPaidRepost ? 'rgba(212,168,83,0.25)' : 'rgba(200,168,110,0.12)'}`, borderRadius:12, transition:'all 0.3s' }}>
+            <label style={{ fontSize:14, display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontWeight:600, color: isPaidRepost ? warm : muted }}>
+              <input type="checkbox" checked={isPaidRepost} onChange={e=>setIsPaidRepost(e.target.checked)} style={{ width:18, height:18, accentColor:warm }} />
+              💰 Платный репост
+            </label>
+            {isPaidRepost && (
+              <div style={{ marginTop:14, display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                <div>
+                  <label style={{ fontSize:11, color:warm, display:'block', marginBottom:6, fontWeight:600 }}>ОПЛАТА ЗА 1 РЕПОСТ (USDT)</label>
+                  <input type="number" step="0.01" value={rewardUsdt} onChange={e=>setRewardUsdt(e.target.value)} style={inp} placeholder="5.00" />
+                </div>
+                <div>
+                  <label style={{ fontSize:11, color:warm, display:'block', marginBottom:6, fontWeight:600 }}>КОЛИЧЕСТВО РЕПОСТОВ</label>
+                  <input type="number" value={repostsNeeded} onChange={e=>setRepostsNeeded(e.target.value)} style={inp} placeholder="50" />
+                </div>
+                {rewardUsdt && repostsNeeded && Number(rewardUsdt) > 0 && Number(repostsNeeded) > 0 && (
+                  <div style={{ gridColumn:'1/-1', padding:'12px 16px', background:'rgba(212,168,83,0.08)', borderRadius:8, fontSize:13 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                      <span style={{ color:muted }}>Бюджет:</span>
+                      <span style={{ color:cream, fontWeight:600 }}>{(Number(rewardUsdt) * Number(repostsNeeded)).toFixed(2)} USDT</span>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', marginBottom:4 }}>
+                      <span style={{ color:muted }}>Комиссия 20%:</span>
+                      <span style={{ color:warm }}>{(Number(rewardUsdt) * Number(repostsNeeded) * 0.2).toFixed(2)} USDT</span>
+                    </div>
+                    <div style={{ display:'flex', justifyContent:'space-between', borderTop:'1px solid rgba(212,168,83,0.15)', paddingTop:6, marginTop:4 }}>
+                      <span style={{ color:cream, fontWeight:700 }}>Итого к оплате:</span>
+                      <span style={{ color:warm, fontWeight:700, fontSize:15 }}>{(Number(rewardUsdt) * Number(repostsNeeded) * 1.2).toFixed(2)} USDT</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
         <div style={{ gridColumn:'1/-1' }}>
           <button onClick={submit} disabled={saving||!title} className="warm-btn-primary" style={{ padding:'13px 28px', fontSize:14 }}>{saving ? 'Сохраняем...' : event ? '💾 Сохранить' : '+ Создать'}</button>

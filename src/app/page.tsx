@@ -10,11 +10,21 @@ interface EventItem {
   id: string; title: string; description?: string|null; date?: string|null;
   location?: string|null; repostUrl?: string|null; imageUrl?: string|null;
   price?: number|null; discountPrice?: number|null;
-  registration: { status: string; createdAt: string; adminNote?: string|null } | null;
+  isPaidRepost?: boolean; repostRewardUsdt?: number|null;
+  repostsNeeded?: number|null; repostsFilled?: number;
+  campaignStatus?: string|null;
+  registration: { status: string; createdAt: string; adminNote?: string|null; paidAmount?: number|null } | null;
+}
+
+interface WalletData {
+  balance: number; balanceRub: number;
+  totalEarned: number; totalPaid: number;
+  history: Array<{ type: string; amount: number; amountRub: number; title?: string; status?: string; date: string }>;
 }
 
 interface MeData {
   user: { first_name?: string|null; username?: string|null };
+  wallet?: { balance: number; totalEarned: number; totalPaid: number } | null;
   events: EventItem[];
 }
 
@@ -51,6 +61,11 @@ export default function App() {
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [storyUrl, setStoryUrl] = useState('');
   const [archiveOpen, setArchiveOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'events'|'profile'>('events');
+  const [walletData, setWalletData] = useState<WalletData|null>(null);
+  const [walletLoading, setWalletLoading] = useState(false);
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawMsg, setWithdrawMsg] = useState('');
 
   useEffect(() => {
     const applyTg = () => {
@@ -79,6 +94,39 @@ export default function App() {
   };
 
   useEffect(() => { if (initData) refreshMe(); }, [initData]);
+
+  const loadWallet = () => {
+    if (!initData) return;
+    setWalletLoading(true);
+    fetch('/api/wallet/me', { headers: { 'x-telegram-init-data': initData } })
+      .then(r => r.json())
+      .then(d => { setWalletData(d); setWalletLoading(false); })
+      .catch(() => setWalletLoading(false));
+  };
+
+  useEffect(() => { if (activeTab === 'profile' && initData) loadWallet(); }, [activeTab, initData]);
+
+  const handleWithdraw = async () => {
+    if (!walletData || walletData.balance <= 0) return;
+    const amount = prompt(`Сколько USDT вывести? (доступно: ${walletData.balance})`);
+    if (!amount || Number(amount) <= 0) return;
+    setWithdrawing(true); setWithdrawMsg('');
+    try {
+      const res = await fetch('/api/wallet/withdraw', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-telegram-init-data': initData },
+        body: JSON.stringify({ amount: Number(amount) }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setWithdrawMsg(`✅ ${amount} USDT отправлено на ваш CryptoBot!`);
+        loadWallet();
+      } else {
+        setWithdrawMsg(`❌ ${data.error || 'Ошибка вывода'}`);
+      }
+    } catch { setWithdrawMsg('❌ Ошибка сети'); }
+    setWithdrawing(false);
+  };
 
   const openUpload = (eventId: string) => {
     setActiveEventId(eventId); setSelectedImage(null);
@@ -180,7 +228,7 @@ export default function App() {
 
         {/* Поле для ссылки на сторис */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>🔗 Ссылка на вашу сторис (необязательно)</label>
+          <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>🔗 Ссылка на вашу сторис {meData?.events.find(e => e.id === eventId)?.isPaidRepost ? <span style={{ color:'var(--accent-error)' }}>(обязательно)</span> : '(необязательно)'}</label>
           <input value={storyUrl} onChange={e => setStoryUrl(e.target.value)} placeholder="https://t.me/..." style={{ width: '100%', padding: '10px 14px', background: 'rgba(200,168,110,0.05)', border: '1px solid rgba(200,168,110,0.18)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
         </div>
 
@@ -212,8 +260,89 @@ export default function App() {
     );
   };
 
+  // Profile view
+  const ProfileView = () => (
+    <div className="animate-fade-in">
+      <div style={{ textAlign:'center', marginBottom:24 }}>
+        <div style={{ fontSize:40, marginBottom:8 }}>👤</div>
+        <div style={{ fontSize:20, fontWeight:800, color:'var(--accent-cream)' }}>{user?.first_name || 'Пользователь'}</div>
+        {user?.username && <div style={{ fontSize:13, color:'var(--text-muted)' }}>@{user.username}</div>}
+      </div>
+
+      {/* Balance card */}
+      <div style={{ background:'linear-gradient(135deg, rgba(212,168,83,0.12), rgba(200,168,110,0.06))', border:'1px solid rgba(212,168,83,0.3)', borderRadius:16, padding:'20px 24px', marginBottom:20, textAlign:'center' }}>
+        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8, fontWeight:600, letterSpacing:'0.06em' }}>💰 БАЛАНС</div>
+        <div style={{ fontSize:32, fontWeight:800, color:'var(--accent-cream)', letterSpacing:'-0.02em' }}>
+          {walletLoading ? '...' : `${walletData?.balance?.toFixed(2) || '0.00'} USDT`}
+        </div>
+        {walletData && walletData.balanceRub > 0 && (
+          <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:4 }}>≈ {walletData.balanceRub.toLocaleString()} ₽</div>
+        )}
+        <button onClick={handleWithdraw} disabled={withdrawing || !walletData || walletData.balance <= 0}
+          className="warm-btn-primary" style={{ marginTop:16, padding:'12px 32px', fontSize:14, opacity: (!walletData || walletData.balance <= 0) ? 0.5 : 1 }}>
+          {withdrawing ? 'Выводим...' : '🏧 Вывести на CryptoBot'}
+        </button>
+        {withdrawMsg && (
+          <div style={{ marginTop:12, padding:'10px 14px', borderRadius:8, fontSize:12, background: withdrawMsg.startsWith('✅') ? 'rgba(143,188,106,0.1)' : 'rgba(199,92,92,0.1)', color: withdrawMsg.startsWith('✅') ? 'var(--accent-success)' : 'var(--accent-error)' }}>
+            {withdrawMsg}
+          </div>
+        )}
+      </div>
+
+      {/* Stats */}
+      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:20 }}>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>Заработано</div>
+          <div style={{ fontSize:18, fontWeight:700, color:'var(--accent-success)' }}>{walletData?.totalEarned?.toFixed(2) || '0.00'}</div>
+          <div style={{ fontSize:10, color:'var(--text-muted)' }}>USDT</div>
+        </div>
+        <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:12, padding:'14px 16px', textAlign:'center' }}>
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:4 }}>Выведено</div>
+          <div style={{ fontSize:18, fontWeight:700, color:'var(--accent-gold)' }}>{walletData?.totalPaid?.toFixed(2) || '0.00'}</div>
+          <div style={{ fontSize:10, color:'var(--text-muted)' }}>USDT</div>
+        </div>
+      </div>
+
+      {/* History */}
+      <div style={{ fontSize:14, fontWeight:700, color:'var(--accent-cream)', marginBottom:12 }}>📋 История операций</div>
+      {(!walletData?.history || walletData.history.length === 0) ? (
+        <div style={{ padding:'20px', textAlign:'center', color:'var(--text-muted)', fontSize:13 }}>Операций пока нет</div>
+      ) : (
+        walletData.history.map((h, i) => (
+          <div key={i} style={{ display:'flex', justifyContent:'space-between', alignItems:'center', padding:'12px 16px', background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:10, marginBottom:8 }}>
+            <div>
+              <div style={{ fontSize:13, fontWeight:600, color: h.type === 'earn' ? 'var(--accent-success)' : 'var(--accent-gold)' }}>
+                {h.type === 'earn' ? `✅ +${h.amount} USDT` : `🏧 -${h.amount} USDT`}
+              </div>
+              <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+                {h.type === 'earn' ? h.title : (h.status === 'completed' ? 'Вывод выполнен' : h.status === 'failed' ? 'Ошибка вывода' : 'В обработке')}
+              </div>
+            </div>
+            <div style={{ fontSize:11, color:'var(--text-muted)' }}>{new Date(h.date).toLocaleDateString('ru-RU')}</div>
+          </div>
+        ))
+      )}
+
+      {/* CryptoBot hint */}
+      <div style={{ marginTop:16, padding:'12px 16px', background:'rgba(212,168,83,0.06)', border:'1px solid rgba(212,168,83,0.15)', borderRadius:10, fontSize:12, color:'var(--text-muted)', textAlign:'center' }}>
+        💡 Для вывода средств активируйте <a href="https://t.me/CryptoBot" target="_blank" rel="noopener" style={{ color:'var(--accent-gold)' }}>@CryptoBot</a> в Telegram
+      </div>
+    </div>
+  );
+
   return (
-    <div style={{ minHeight: '100vh', padding: '20px 20px 40px', maxWidth: 520, margin: '0 auto', position: 'relative', zIndex: 1 }} className="animate-fade-in">
+    <div style={{ minHeight: '100vh', padding: '20px 20px 80px', maxWidth: 520, margin: '0 auto', position: 'relative', zIndex: 1 }} className="animate-fade-in">
+      {/* Tab bar */}
+      <div style={{ display:'flex', gap:4, background:'var(--bg-card)', borderRadius:12, padding:4, border:'1px solid var(--border-subtle)', marginBottom:18 }}>
+        <button onClick={() => setActiveTab('events')} className={`tab-bar-item ${activeTab==='events' ? 'active' : ''}`}>📋 Мероприятия</button>
+        <button onClick={() => setActiveTab('profile')} className={`tab-bar-item ${activeTab==='profile' ? 'active' : ''}`} style={{ position:'relative' }}>
+          👤 Кабинет
+          {(meData?.wallet?.balance ?? 0) > 0 && <span style={{ position:'absolute', top:4, right:8, width:7, height:7, borderRadius:'50%', background:'var(--accent-success)' }} />}
+        </button>
+      </div>
+
+      {activeTab === 'profile' ? <ProfileView /> : (
+      <>
       {/* Шапка */}
       <div style={{ marginBottom: 18 }}>
         {user?.first_name && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>👋 Привет, <b style={{ color: 'var(--accent-cream)' }}>{user.first_name}</b></div>}
@@ -243,6 +372,17 @@ export default function App() {
           }}>
             {/* Картинка мероприятия */}
             {ev.imageUrl && <img src={ev.imageUrl} alt="" className="event-image" />}
+
+            {/* Paid repost badge */}
+            {ev.isPaidRepost && (
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, padding:'8px 12px', background:'linear-gradient(135deg, rgba(212,168,83,0.1), rgba(143,188,106,0.06))', border:'1px solid rgba(212,168,83,0.25)', borderRadius:10 }}>
+                <span style={{ fontSize:16 }}>💰</span>
+                <div>
+                  <div style={{ fontSize:13, fontWeight:700, color:'var(--accent-warm)' }}>{ev.repostRewardUsdt} USDT за репост</div>
+                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>Осталось: {(ev.repostsNeeded || 0) - (ev.repostsFilled || 0)} из {ev.repostsNeeded}</div>
+                </div>
+              </div>
+            )}
 
             {/* Заголовок + статус */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
@@ -377,6 +517,7 @@ export default function App() {
           ⚠️ Открой приложение через Telegram-бота
         </div>
       )}
+      </>)}
     </div>
   );
 }

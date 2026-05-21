@@ -63,59 +63,169 @@ bot.start(async (ctx) => {
 bot.on('callback_query', async (ctx) => {
   try {
     const data = (ctx.callbackQuery as any).data as string;
-    if (!data?.startsWith('reg:')) return;
+    if (!data) return;
 
-    const [, action, registrationId] = data.split(':');
+    // ── Standard registration approve/reject (admin) ──
+    if (data.startsWith('reg:')) {
+      const [, action, registrationId] = data.split(':');
 
-    const prisma = getPrisma();
-    const registration = await prisma.registration.findUnique({
-      where: { id: registrationId },
-      include: { user: true, event: true },
-    });
+      const prisma = getPrisma();
+      const registration = await prisma.registration.findUnique({
+        where: { id: registrationId },
+        include: { user: true, event: true },
+      });
 
-    if (!registration) {
-      await ctx.answerCbQuery('❌ Заявка не найдена');
+      if (!registration) {
+        await ctx.answerCbQuery('❌ Заявка не найдена');
+        return;
+      }
+
+      if (registration.status !== 'PENDING') {
+        await ctx.answerCbQuery('⚠️ Уже обработано');
+        await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+        return;
+      }
+
+      const telegramId = registration.user?.telegram_id;
+      const username = registration.user?.username;
+      const eventTitle = registration.event?.title || 'Мероприятие';
+      const eventDate = registration.event?.date
+        ? new Date(registration.event.date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })
+        : null;
+      const eventLocation = registration.event?.location;
+
+      if (action === 'approve') {
+        await prisma.registration.update({
+          where: { id: registrationId },
+          data: { status: 'APPROVED' },
+        });
+        await ctx.answerCbQuery('✅ Одобрено!');
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [[{ text: '✅ ОДОБРЕНО', callback_data: 'done' }]],
+        });
+        if (telegramId) {
+          notifyRegistrationApproved(telegramId, eventTitle, eventDate, eventLocation, username).catch(console.error);
+        }
+      } else if (action === 'reject') {
+        await prisma.registration.update({
+          where: { id: registrationId },
+          data: { status: 'REJECTED' },
+        });
+        await ctx.answerCbQuery('❌ Отклонено');
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [[{ text: '❌ ОТКЛОНЕНО', callback_data: 'done' }]],
+        });
+        if (telegramId) {
+          notifyRegistrationRejected(telegramId, eventTitle, null, username).catch(console.error);
+        }
+      }
       return;
     }
 
-    if (registration.status !== 'PENDING') {
-      await ctx.answerCbQuery('⚠️ Уже обработано');
-      await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+    // ── Paid repost approve/reject (organizer) ──
+    if (data.startsWith('paid_reg:')) {
+      const [, action, registrationId] = data.split(':');
+
+      const prisma = getPrisma();
+      const registration = await prisma.registration.findUnique({
+        where: { id: registrationId },
+        include: { user: true, event: { include: { organizer: true } } },
+      });
+
+      if (!registration) {
+        await ctx.answerCbQuery('❌ Заявка не найдена');
+        return;
+      }
+
+      if (registration.status !== 'PENDING') {
+        await ctx.answerCbQuery('⚠️ Уже обработано');
+        await ctx.editMessageReplyMarkup({ inline_keyboard: [] });
+        return;
+      }
+
+      // Verify the caller is the event organizer
+      const callerTgId = BigInt(ctx.from.id);
+      if (registration.event?.organizer?.telegram_id !== callerTgId) {
+        await ctx.answerCbQuery('⛔ Вы не организатор этого мероприятия');
+        return;
+      }
+
+      const event = registration.event;
+      const telegramId = registration.user?.telegram_id;
+      const eventTitle = event?.title || 'Мероприятие';
+
+      if (action === 'approve') {
+        const rewardAmount = event?.repostRewardUsdt || 0;
+
+        if (rewardAmount > 0) {
+          // 1. Credit user wallet
+          await prisma.userWallet.upsert({
+            where: { userId: registration.userId },
+            create: {
+              userId: registration.userId,
+              balance: rewardAmount,
+              totalEarned: rewardAmount,
+            },
+            update: {
+              balance: { increment: rewardAmount },
+              totalEarned: { increment: rewardAmount },
+            },
+          });
+
+          // 2. Update registration
+          await prisma.registration.update({
+            where: { id: registrationId },
+            data: { status: 'APPROVED', paidAmount: rewardAmount },
+          });
+
+          // 3. Update campaign progress
+          const updatedEvent = await prisma.event.update({
+            where: { id: registration.eventId },
+            data: { repostsFilled: { increment: 1 } },
+          });
+
+          // 4. Check if campaign completed
+          if (updatedEvent.repostsNeeded && updatedEvent.repostsFilled >= updatedEvent.repostsNeeded) {
+            await prisma.event.update({
+              where: { id: registration.eventId },
+              data: { campaignStatus: 'completed', isActive: false },
+            });
+            const { notifyOrgCampaignCompleted } = await import('@/lib/notify');
+            notifyOrgCampaignCompleted(callerTgId, eventTitle).catch(console.error);
+          }
+        } else {
+          await prisma.registration.update({
+            where: { id: registrationId },
+            data: { status: 'APPROVED' },
+          });
+        }
+
+        await ctx.answerCbQuery(`✅ Одобрено! +${rewardAmount} USDT юзеру`);
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [[{ text: `✅ ОДОБРЕНО (+${rewardAmount} USDT)`, callback_data: 'done' }]],
+        });
+
+        // Notify user
+        if (telegramId && rewardAmount > 0) {
+          const { notifyUserPaidRepostApproved } = await import('@/lib/notify');
+          notifyUserPaidRepostApproved(telegramId, rewardAmount, eventTitle).catch(console.error);
+        }
+      } else if (action === 'reject') {
+        await prisma.registration.update({
+          where: { id: registrationId },
+          data: { status: 'REJECTED' },
+        });
+        await ctx.answerCbQuery('❌ Отклонено');
+        await ctx.editMessageReplyMarkup({
+          inline_keyboard: [[{ text: '❌ ОТКЛОНЕНО', callback_data: 'done' }]],
+        });
+
+        if (telegramId) {
+          const { notifyUserPaidRepostRejected } = await import('@/lib/notify');
+          notifyUserPaidRepostRejected(telegramId, eventTitle).catch(console.error);
+        }
+      }
       return;
-    }
-
-    const telegramId = registration.user?.telegram_id;
-    const username = registration.user?.username;
-    const eventTitle = registration.event?.title || 'Мероприятие';
-    const eventDate = registration.event?.date
-      ? new Date(registration.event.date).toLocaleDateString('ru-RU', { day: '2-digit', month: 'long', year: 'numeric' })
-      : null;
-    const eventLocation = registration.event?.location;
-
-    if (action === 'approve') {
-      await prisma.registration.update({
-        where: { id: registrationId },
-        data: { status: 'APPROVED' },
-      });
-      await ctx.answerCbQuery('✅ Одобрено!');
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: [[{ text: '✅ ОДОБРЕНО', callback_data: 'done' }]],
-      });
-      if (telegramId) {
-        notifyRegistrationApproved(telegramId, eventTitle, eventDate, eventLocation, username).catch(console.error);
-      }
-    } else if (action === 'reject') {
-      await prisma.registration.update({
-        where: { id: registrationId },
-        data: { status: 'REJECTED' },
-      });
-      await ctx.answerCbQuery('❌ Отклонено');
-      await ctx.editMessageReplyMarkup({
-        inline_keyboard: [[{ text: '❌ ОТКЛОНЕНО', callback_data: 'done' }]],
-      });
-      if (telegramId) {
-        notifyRegistrationRejected(telegramId, eventTitle, null, username).catch(console.error);
-      }
     }
   } catch (err) {
     console.error('callback_query error:', err);
@@ -126,3 +236,4 @@ bot.on('callback_query', async (ctx) => {
 bot.catch((err, ctx) => {
   console.error(`Bot error for ${ctx.updateType}`, err);
 });
+

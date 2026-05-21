@@ -26,16 +26,20 @@ export async function GET(req: NextRequest) {
 
     const user = await prisma.user.findUnique({
       where: { telegram_id: BigInt(tgUser.id) },
-      include: { registrations: true },
+      include: {
+        registrations: true,
+        wallet: true,
+      },
     });
 
-    const registrationMap: Record<string, { status: string; createdAt: Date; adminNote?: string | null }> = {};
+    const registrationMap: Record<string, { status: string; createdAt: Date; adminNote?: string | null; paidAmount?: number | null }> = {};
     if (user?.registrations) {
       for (const reg of user.registrations) {
         registrationMap[reg.eventId] = {
           status: reg.status.toLowerCase(),
           createdAt: reg.createdAt,
           adminNote: reg.adminNote,
+          paidAmount: reg.paidAmount,
         };
       }
     }
@@ -45,18 +49,37 @@ export async function GET(req: NextRequest) {
         first_name: tgUser.first_name || null,
         username: tgUser.username || null,
       },
-      events: events.map(ev => ({
-        id: ev.id,
-        title: ev.title,
-        description: ev.description,
-        date: ev.date,
-        location: ev.location,
-        repostUrl: ev.repostUrl,
-        imageUrl: ev.imageUrl,
-        price: ev.price,
-        discountPrice: ev.discountPrice,
-        registration: registrationMap[ev.id] || null,
-      })),
+      wallet: user?.wallet ? {
+        balance: user.wallet.balance,
+        totalEarned: user.wallet.totalEarned,
+        totalPaid: user.wallet.totalPaid,
+      } : null,
+      events: events
+        .filter(ev => {
+          // For paid reposts: only show if campaign is active
+          if (ev.isPaidRepost) {
+            return ev.campaignStatus === 'active' && ev.isActive;
+          }
+          return true; // non-paid: show all as before
+        })
+        .map(ev => ({
+          id: ev.id,
+          title: ev.title,
+          description: ev.description,
+          date: ev.date,
+          location: ev.location,
+          repostUrl: ev.repostUrl,
+          imageUrl: ev.imageUrl,
+          price: ev.price,
+          discountPrice: ev.discountPrice,
+          // Paid repost fields
+          isPaidRepost: ev.isPaidRepost,
+          repostRewardUsdt: ev.repostRewardUsdt,
+          repostsNeeded: ev.repostsNeeded,
+          repostsFilled: ev.repostsFilled,
+          campaignStatus: ev.campaignStatus,
+          registration: registrationMap[ev.id] || null,
+        })),
     });
   } catch (err) {
     console.error('[api/me] Error:', err);

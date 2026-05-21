@@ -29,6 +29,7 @@ export async function GET() {
     proofUrl: r.proofUrl,
     storyUrl: r.storyUrl,
     adminNote: r.adminNote,
+    paidAmount: r.paidAmount,
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     user: {
@@ -38,6 +39,8 @@ export async function GET() {
     event: {
       id: r.event?.id,
       title: r.event?.title || null,
+      isPaidRepost: r.event?.isPaidRepost || false,
+      repostRewardUsdt: r.event?.repostRewardUsdt || null,
     },
   }));
 
@@ -58,7 +61,7 @@ export async function PATCH(req: NextRequest) {
   const prisma = getPrisma();
   const reg = await prisma.registration.findUnique({
     where: { id: registrationId },
-    include: { user: true, event: true },
+    include: { user: true, event: { include: { organizer: true } } },
   });
   if (!reg) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -68,6 +71,66 @@ export async function PATCH(req: NextRequest) {
   }
 
   const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+
+  // === Paid repost logic ===
+  if (action === 'approve' && reg.event?.isPaidRepost && reg.event?.repostRewardUsdt) {
+    const rewardAmount = reg.event.repostRewardUsdt;
+
+    // 1. Upsert user wallet and credit reward
+    await prisma.userWallet.upsert({
+      where: { userId: reg.userId },
+      create: {
+        userId: reg.userId,
+        balance: rewardAmount,
+        totalEarned: rewardAmount,
+      },
+      update: {
+        balance: { increment: rewardAmount },
+        totalEarned: { increment: rewardAmount },
+      },
+    });
+
+    // 2. Update registration with paid amount
+    await prisma.registration.update({
+      where: { id: registrationId },
+      data: { status: newStatus, adminNote: adminNote || null, paidAmount: rewardAmount },
+    });
+
+    // 3. Increment repostsFilled and check if campaign is complete
+    const updatedEvent = await prisma.event.update({
+      where: { id: reg.eventId },
+      data: { repostsFilled: { increment: 1 } },
+    });
+
+    if (updatedEvent.repostsNeeded && updatedEvent.repostsFilled >= updatedEvent.repostsNeeded) {
+      await prisma.event.update({
+        where: { id: reg.eventId },
+        data: { campaignStatus: 'completed', isActive: false },
+      });
+
+      // Notify org that campaign is complete
+      const orgTelegramId = reg.event?.organizer?.telegram_id || (
+        reg.event?.organizerId
+          ? (await prisma.organizer.findUnique({ where: { id: reg.event.organizerId } }))?.telegram_id
+          : null
+      );
+      if (orgTelegramId) {
+        const { notifyOrgCampaignCompleted } = await import('@/lib/notify');
+        notifyOrgCampaignCompleted(orgTelegramId, reg.event.title).catch(console.error);
+      }
+    }
+
+    // 4. Notify user about payment
+    const telegramId = reg.user?.telegram_id;
+    if (telegramId) {
+      const { notifyUserPaidRepostApproved } = await import('@/lib/notify');
+      notifyUserPaidRepostApproved(telegramId, rewardAmount, reg.event.title).catch(console.error);
+    }
+
+    return NextResponse.json({ success: true, status: newStatus, paidAmount: rewardAmount });
+  }
+
+  // === Standard (non-paid) logic ===
   await prisma.registration.update({
     where: { id: registrationId },
     data: { status: newStatus, adminNote: adminNote || null },

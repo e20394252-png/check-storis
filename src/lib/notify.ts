@@ -264,3 +264,98 @@ export async function notifySuperAdminNewEvent(eventId: string, title: string, o
 
   await Promise.all(ids.map(id => sendMessage(id, text)));
 }
+
+// ─── Платные репосты: уведомления ─────────────────────────────────────────
+
+/** Notify organizer about a new paid repost submission (with approve/reject buttons) */
+export async function notifyOrgNewPaidRepost(
+  orgTelegramId: bigint,
+  registrationId: string,
+  userName: string,
+  username?: string | null,
+  storyUrl?: string | null,
+  eventTitle?: string,
+) {
+  const caption =
+    `💰 <b>Новый платный репост!</b>\n\n` +
+    `📅 ${escapeHtml(eventTitle || 'Мероприятие')}\n` +
+    `👤 ${escapeHtml(userName)}${username ? ` (@${escapeHtml(username)})` : ''}\n` +
+    (storyUrl ? `🔗 <a href="${escapeHtml(storyUrl)}">Ссылка на сторис</a>\n` : '') +
+    `\nПроверьте и примите решение:`;
+
+  const replyMarkup = {
+    inline_keyboard: [[
+      { text: '✅ Одобрить и оплатить', callback_data: `paid_reg:approve:${registrationId}` },
+      { text: '❌ Отклонить', callback_data: `paid_reg:reject:${registrationId}` },
+    ]],
+  };
+
+  await sendMessage(orgTelegramId, caption, {
+    reply_markup: JSON.stringify(replyMarkup),
+    disable_web_page_preview: false,
+  });
+}
+
+/** Notify user that their paid repost was approved and funds credited */
+export async function notifyUserPaidRepostApproved(
+  telegramId: bigint,
+  amountUsdt: number,
+  eventTitle: string,
+) {
+  await sendMessage(telegramId,
+    `💸 <b>Начислено ${amountUsdt} USDT!</b>\n\n` +
+    `Ваш репост для <b>${escapeHtml(eventTitle)}</b> одобрен ✅\n` +
+    `Средства зачислены на ваш баланс.\n\n` +
+    `Откройте приложение чтобы вывести средства.`,
+    openAppButton
+  );
+}
+
+/** Notify user that their paid repost was rejected */
+export async function notifyUserPaidRepostRejected(
+  telegramId: bigint,
+  eventTitle: string,
+  reason?: string | null,
+) {
+  await sendMessage(telegramId,
+    `❌ <b>Репост не принят</b>\n\n` +
+    `Ваш репост для <b>${escapeHtml(eventTitle)}</b> не прошёл проверку.\n` +
+    (reason ? `Причина: ${escapeHtml(reason)}\n\n` : '\n') +
+    `Попробуйте загрузить скриншот повторно.`,
+    tryAgainButton
+  );
+}
+
+/** Notify organizer that their payment was received */
+export async function notifyOrgPaymentReceived(
+  orgTelegramId: bigint,
+  eventTitle: string,
+  amountUsdt: number,
+  additionalSlots?: number,
+) {
+  const text = additionalSlots
+    ? `✅ <b>Доплата получена!</b>\n\n` +
+      `📅 ${escapeHtml(eventTitle)}\n` +
+      `💰 ${amountUsdt} USDT\n` +
+      `➕ Докуплено ${additionalSlots} сторис\n\n` +
+      `Кампания активна.`
+    : `✅ <b>Оплата получена!</b>\n\n` +
+      `📅 ${escapeHtml(eventTitle)}\n` +
+      `💰 ${amountUsdt} USDT\n\n` +
+      `Кампания активирована! Теперь пользователи видят ваше объявление.`;
+
+  await sendMessage(orgTelegramId, text);
+}
+
+/** Notify organizer that campaign is complete (all repost slots filled) */
+export async function notifyOrgCampaignCompleted(
+  orgTelegramId: bigint,
+  eventTitle: string,
+) {
+  await sendMessage(orgTelegramId,
+    `🎉 <b>Кампания завершена!</b>\n\n` +
+    `📅 ${escapeHtml(eventTitle)}\n\n` +
+    `Все репосты набраны. Объявление снято с размещения.\n` +
+    `Вы можете докупить ещё сторис в панели управления.`
+  );
+}
