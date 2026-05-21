@@ -661,8 +661,9 @@ function OrgCard({ org, busy, onReview, onUpdate }: {
 function CryptoBotPanel() {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [setting, setSetting] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<any>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch('/api/cryptobot/setup-webhook')
@@ -671,19 +672,24 @@ function CryptoBotPanel() {
       .catch(() => setLoading(false));
   }, []);
 
-  const setupWebhook = async () => {
-    setSetting(true); setResult(null);
+  const testWebhook = async () => {
+    setTesting(true); setTestResult(null);
     try {
       const res = await fetch('/api/cryptobot/setup-webhook', { method: 'POST' });
       const data = await res.json();
-      setResult(data);
-      // Refresh status
-      const s = await fetch('/api/cryptobot/setup-webhook').then(r => r.json());
-      setStatus(s);
+      setTestResult(data);
     } catch (err: any) {
-      setResult({ error: err.message });
+      setTestResult({ success: false, error: err.message });
     }
-    setSetting(false);
+    setTesting(false);
+  };
+
+  const copyUrl = () => {
+    if (status?.webhookUrl) {
+      navigator.clipboard.writeText(status.webhookUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   if (loading) return <div style={{ textAlign:'center', padding:'40px 0', color:muted }}>Загрузка...</div>;
@@ -726,64 +732,85 @@ function CryptoBotPanel() {
         )}
       </div>
 
-      {/* Webhook setup */}
+      {/* Webhook URL */}
       <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
-        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🔗 Webhook</div>
-        <div style={{ fontSize:12, color:muted, marginBottom:16, lineHeight:1.6 }}>
-          Webhook — это URL на который CryptoBot отправляет уведомления об оплатах.
-          Нажмите кнопку ниже чтобы автоматически настроить webhook на ваш сервер.
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🔗 Webhook URL</div>
+        <div style={{ fontSize:12, color:muted, marginBottom:14, lineHeight:1.6 }}>
+          Скопируйте URL и вставьте в настройках приложения в{' '}
+          <a href={status?.testnet ? 'https://t.me/CryptoTestnetBot' : 'https://t.me/CryptoBot'} target="_blank" rel="noopener" style={{ color:gold }}>
+            @{status?.testnet ? 'CryptoTestnetBot' : 'CryptoBot'}
+          </a>
         </div>
-        <button
-          onClick={setupWebhook}
-          disabled={setting || !status?.connected}
-          style={{
-            padding:'12px 24px', fontSize:14, fontWeight:700, borderRadius:10, cursor:'pointer',
-            background: status?.connected ? 'linear-gradient(135deg, rgba(200,168,110,0.15), rgba(212,168,83,0.15))' : 'rgba(200,168,110,0.05)',
-            border: `1px solid ${status?.connected ? 'rgba(200,168,110,0.4)' : 'rgba(200,168,110,0.12)'}`,
-            color: status?.connected ? gold : muted,
-            opacity: setting ? 0.6 : 1,
-          }}
-        >
-          {setting ? '⏳ Настраиваем...' : '🔧 Настроить Webhook'}
-        </button>
 
-        {result && (
-          <div style={{
-            marginTop:14, padding:'12px 16px', borderRadius:10, fontSize:13,
-            background: result.success ? 'rgba(143,188,106,0.08)' : 'rgba(199,92,92,0.08)',
-            border: `1px solid ${result.success ? 'rgba(143,188,106,0.25)' : 'rgba(199,92,92,0.25)'}`,
-            color: result.success ? success : error,
-          }}>
-            {result.success
-              ? `✅ Webhook установлен: ${result.webhookUrl}`
-              : `❌ ${result.error || 'Ошибка настройки'}`
-            }
-          </div>
+        {status?.webhookUrl ? (
+          <>
+            <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
+              <div style={{
+                flex:1, padding:'12px 16px', background:'rgba(200,168,110,0.06)', border:'1px solid rgba(200,168,110,0.2)',
+                borderRadius:8, fontSize:13, color:cream, fontFamily:'monospace', wordBreak:'break-all', lineHeight:1.5,
+              }}>
+                {status.webhookUrl}
+              </div>
+              <button onClick={copyUrl} style={{
+                padding:'12px 18px', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap',
+                background: copied ? 'rgba(143,188,106,0.15)' : 'rgba(200,168,110,0.1)',
+                border: `1px solid ${copied ? 'rgba(143,188,106,0.4)' : 'rgba(200,168,110,0.3)'}`,
+                color: copied ? success : gold, transition:'all 0.2s',
+              }}>
+                {copied ? '✅' : '📋 Копировать'}
+              </button>
+            </div>
+
+            <div style={{ marginTop:14 }}>
+              <button onClick={testWebhook} disabled={testing} style={{
+                padding:'10px 20px', fontSize:13, fontWeight:600, borderRadius:8, cursor:'pointer',
+                background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.2)', color:muted,
+                opacity: testing ? 0.6 : 1,
+              }}>
+                {testing ? '⏳ Проверяем...' : '🧪 Проверить URL'}
+              </button>
+            </div>
+
+            {testResult && (
+              <div style={{
+                marginTop:12, padding:'10px 14px', borderRadius:8, fontSize:12,
+                background: testResult.success ? 'rgba(143,188,106,0.08)' : 'rgba(199,92,92,0.08)',
+                border: `1px solid ${testResult.success ? 'rgba(143,188,106,0.25)' : 'rgba(199,92,92,0.25)'}`,
+                color: testResult.success ? success : error,
+              }}>
+                {testResult.success ? `✅ ${testResult.message}` : `❌ ${testResult.error}`}
+              </div>
+            )}
+          </>
+        ) : (
+          <div style={{ fontSize:13, color:error }}>URL не определён. Проверьте переменные окружения.</div>
         )}
       </div>
 
       {/* Instructions */}
       <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px' }}>
-        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>📋 Инструкция</div>
-        <div style={{ fontSize:13, color:muted, lineHeight:1.8 }}>
-          <div style={{ marginBottom:8 }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:14 }}>📋 Как настроить Webhook</div>
+        <div style={{ fontSize:13, color:muted, lineHeight:2 }}>
+          <div style={{ marginBottom:4 }}>
             <span style={{ fontWeight:600, color:cream }}>1.</span> Откройте{' '}
             <a href={status?.testnet ? 'https://t.me/CryptoTestnetBot' : 'https://t.me/CryptoBot'} target="_blank" rel="noopener" style={{ color:gold, textDecoration:'underline' }}>
               @{status?.testnet ? 'CryptoTestnetBot' : 'CryptoBot'}
             </a>
           </div>
-          <div style={{ marginBottom:8 }}>
-            <span style={{ fontWeight:600, color:cream }}>2.</span> Создайте приложение: /pay → «Создать приложение»
+          <div style={{ marginBottom:4 }}>
+            <span style={{ fontWeight:600, color:cream }}>2.</span> Отправьте <code style={{ background:'rgba(200,168,110,0.1)', padding:'2px 6px', borderRadius:4, color:cream }}>/pay</code>
           </div>
-          <div style={{ marginBottom:8 }}>
-            <span style={{ fontWeight:600, color:cream }}>3.</span> Скопируйте API Token и добавьте в Railway как <code style={{ background:'rgba(200,168,110,0.1)', padding:'2px 6px', borderRadius:4, color:cream }}>CRYPTOBOT_TOKEN</code>
+          <div style={{ marginBottom:4 }}>
+            <span style={{ fontWeight:600, color:cream }}>3.</span> Выберите приложение «{status?.app?.name || '...'}»
           </div>
-          <div style={{ marginBottom:8 }}>
-            <span style={{ fontWeight:600, color:cream }}>4.</span> Добавьте{' '}
-            <code style={{ background:'rgba(200,168,110,0.1)', padding:'2px 6px', borderRadius:4, color:cream }}>CRYPTOBOT_TESTNET=true</code>
+          <div style={{ marginBottom:4 }}>
+            <span style={{ fontWeight:600, color:cream }}>4.</span> Нажмите <b style={{ color:cream }}>Webhooks</b>
+          </div>
+          <div style={{ marginBottom:4 }}>
+            <span style={{ fontWeight:600, color:cream }}>5.</span> Вставьте URL (кнопка «📋 Копировать» выше)
           </div>
           <div>
-            <span style={{ fontWeight:600, color:cream }}>5.</span> Нажмите «🔧 Настроить Webhook» выше
+            <span style={{ fontWeight:600, color:cream }}>6.</span> Нажмите «🧪 Проверить URL» для подтверждения
           </div>
         </div>
       </div>
