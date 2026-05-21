@@ -53,6 +53,8 @@ export async function POST() {
       return NextResponse.json({
         error: 'CryptoBot setWebhook failed',
         details: data.error || data,
+        webhookUrl,
+        rawResponse: data,
       }, { status: 500 });
     }
 
