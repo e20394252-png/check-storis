@@ -130,6 +130,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
         <TabBtn id="rejected" label="❌ Отклонённые" count={rejected.length} />
         <TabBtn id="events" label="📅 Мероприятия" count={events.length} />
         {organizer.isSuperAdmin && <TabBtn id="organizers" label="👥 Организаторы" count={pendingOrgs.length} />}
+        {organizer.isSuperAdmin && <TabBtn id="cryptobot" label="💳 CryptoBot" />}
       </div>
 
       <div style={{ padding:'24px 28px' }}>
@@ -360,6 +361,9 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             ))}
           </div>
         )}
+
+        {/* CRYPTOBOT (суперадмин) */}
+        {tab === 'cryptobot' && organizer.isSuperAdmin && <CryptoBotPanel />}
       </div>
     </div>
   );
@@ -652,3 +656,138 @@ function OrgCard({ org, busy, onReview, onUpdate }: {
     </div>
   );
 }
+
+// CryptoBot управление
+function CryptoBotPanel() {
+  const [status, setStatus] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [setting, setSetting] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  useEffect(() => {
+    fetch('/api/cryptobot/setup-webhook')
+      .then(r => r.json())
+      .then(d => { setStatus(d); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, []);
+
+  const setupWebhook = async () => {
+    setSetting(true); setResult(null);
+    try {
+      const res = await fetch('/api/cryptobot/setup-webhook', { method: 'POST' });
+      const data = await res.json();
+      setResult(data);
+      // Refresh status
+      const s = await fetch('/api/cryptobot/setup-webhook').then(r => r.json());
+      setStatus(s);
+    } catch (err: any) {
+      setResult({ error: err.message });
+    }
+    setSetting(false);
+  };
+
+  if (loading) return <div style={{ textAlign:'center', padding:'40px 0', color:muted }}>Загрузка...</div>;
+
+  return (
+    <div>
+      <div style={{ fontSize:12, color:muted, marginBottom:20 }}>💳 CryptoBot интеграция</div>
+
+      {/* Connection status */}
+      <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
+          <div style={{
+            width:12, height:12, borderRadius:'50%',
+            background: status?.connected ? success : error,
+            boxShadow: `0 0 8px ${status?.connected ? success : error}40`,
+          }} />
+          <div style={{ fontWeight:700, fontSize:15 }}>
+            {status?.connected ? 'Подключено' : 'Не подключено'}
+          </div>
+          <span style={{
+            fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, marginLeft:'auto',
+            background: status?.testnet ? 'rgba(212,168,83,0.15)' : 'rgba(143,188,106,0.12)',
+            color: status?.testnet ? warm : success,
+          }}>
+            {status?.testnet ? 'TESTNET' : 'MAINNET'}
+          </span>
+        </div>
+
+        {status?.connected && status?.app && (
+          <div style={{ fontSize:13, color:muted, lineHeight:1.8 }}>
+            <div>📱 Приложение: <span style={{ color:cream }}>{status.app.name}</span></div>
+            <div>🆔 App ID: <span style={{ color:cream }}>{status.app.app_id}</span></div>
+          </div>
+        )}
+
+        {!status?.connected && (
+          <div style={{ fontSize:13, color:error, marginTop:8 }}>
+            {status?.error || 'Добавьте CRYPTOBOT_TOKEN в переменные окружения Railway'}
+          </div>
+        )}
+      </div>
+
+      {/* Webhook setup */}
+      <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🔗 Webhook</div>
+        <div style={{ fontSize:12, color:muted, marginBottom:16, lineHeight:1.6 }}>
+          Webhook — это URL на который CryptoBot отправляет уведомления об оплатах.
+          Нажмите кнопку ниже чтобы автоматически настроить webhook на ваш сервер.
+        </div>
+        <button
+          onClick={setupWebhook}
+          disabled={setting || !status?.connected}
+          style={{
+            padding:'12px 24px', fontSize:14, fontWeight:700, borderRadius:10, cursor:'pointer',
+            background: status?.connected ? 'linear-gradient(135deg, rgba(200,168,110,0.15), rgba(212,168,83,0.15))' : 'rgba(200,168,110,0.05)',
+            border: `1px solid ${status?.connected ? 'rgba(200,168,110,0.4)' : 'rgba(200,168,110,0.12)'}`,
+            color: status?.connected ? gold : muted,
+            opacity: setting ? 0.6 : 1,
+          }}
+        >
+          {setting ? '⏳ Настраиваем...' : '🔧 Настроить Webhook'}
+        </button>
+
+        {result && (
+          <div style={{
+            marginTop:14, padding:'12px 16px', borderRadius:10, fontSize:13,
+            background: result.success ? 'rgba(143,188,106,0.08)' : 'rgba(199,92,92,0.08)',
+            border: `1px solid ${result.success ? 'rgba(143,188,106,0.25)' : 'rgba(199,92,92,0.25)'}`,
+            color: result.success ? success : error,
+          }}>
+            {result.success
+              ? `✅ Webhook установлен: ${result.webhookUrl}`
+              : `❌ ${result.error || 'Ошибка настройки'}`
+            }
+          </div>
+        )}
+      </div>
+
+      {/* Instructions */}
+      <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px' }}>
+        <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>📋 Инструкция</div>
+        <div style={{ fontSize:13, color:muted, lineHeight:1.8 }}>
+          <div style={{ marginBottom:8 }}>
+            <span style={{ fontWeight:600, color:cream }}>1.</span> Откройте{' '}
+            <a href={status?.testnet ? 'https://t.me/CryptoTestnetBot' : 'https://t.me/CryptoBot'} target="_blank" rel="noopener" style={{ color:gold, textDecoration:'underline' }}>
+              @{status?.testnet ? 'CryptoTestnetBot' : 'CryptoBot'}
+            </a>
+          </div>
+          <div style={{ marginBottom:8 }}>
+            <span style={{ fontWeight:600, color:cream }}>2.</span> Создайте приложение: /pay → «Создать приложение»
+          </div>
+          <div style={{ marginBottom:8 }}>
+            <span style={{ fontWeight:600, color:cream }}>3.</span> Скопируйте API Token и добавьте в Railway как <code style={{ background:'rgba(200,168,110,0.1)', padding:'2px 6px', borderRadius:4, color:cream }}>CRYPTOBOT_TOKEN</code>
+          </div>
+          <div style={{ marginBottom:8 }}>
+            <span style={{ fontWeight:600, color:cream }}>4.</span> Добавьте{' '}
+            <code style={{ background:'rgba(200,168,110,0.1)', padding:'2px 6px', borderRadius:4, color:cream }}>CRYPTOBOT_TESTNET=true</code>
+          </div>
+          <div>
+            <span style={{ fontWeight:600, color:cream }}>5.</span> Нажмите «🔧 Настроить Webhook» выше
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
