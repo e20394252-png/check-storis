@@ -157,6 +157,67 @@ export async function POST(req: NextRequest) {
       );
     `);
 
+    // ════════════════════════════════════════════════════════════
+    // Платные репосты — новые поля и таблицы
+    // ════════════════════════════════════════════════════════════
+
+    // Event — новые поля для платного репоста
+    await run('Event.isPaidRepost', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "isPaidRepost" BOOLEAN NOT NULL DEFAULT FALSE;`);
+    await run('Event.repostRewardUsdt', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "repostRewardUsdt" DOUBLE PRECISION;`);
+    await run('Event.repostsNeeded', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "repostsNeeded" INTEGER;`);
+    await run('Event.repostsFilled', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "repostsFilled" INTEGER NOT NULL DEFAULT 0;`);
+    await run('Event.campaignBudget', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "campaignBudget" DOUBLE PRECISION;`);
+    await run('Event.campaignTotal', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "campaignTotal" DOUBLE PRECISION;`);
+    await run('Event.campaignStatus', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "campaignStatus" TEXT;`);
+    await run('Event.invoiceId', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "invoiceId" TEXT;`);
+    await run('Event.invoiceUrl', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "invoiceUrl" TEXT;`);
+
+    // Registration — paidAmount
+    await run('Registration.paidAmount', `ALTER TABLE "Registration" ADD COLUMN IF NOT EXISTS "paidAmount" DOUBLE PRECISION;`);
+
+    // UserWallet table
+    await run('Table UserWallet', `
+      CREATE TABLE IF NOT EXISTS "UserWallet" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        "userId" TEXT UNIQUE NOT NULL,
+        balance DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalEarned" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalPaid" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT fk_wallet_user FOREIGN KEY ("userId") REFERENCES "User"(id) ON DELETE CASCADE
+      );
+    `);
+
+    // Withdrawal table
+    await run('Table Withdrawal', `
+      CREATE TABLE IF NOT EXISTS "Withdrawal" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        "walletId" TEXT NOT NULL,
+        amount DOUBLE PRECISION NOT NULL,
+        status TEXT NOT NULL DEFAULT 'pending',
+        "transferId" TEXT,
+        error TEXT,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT fk_withdrawal_wallet FOREIGN KEY ("walletId") REFERENCES "UserWallet"(id)
+      );
+    `);
+
+    // OrganizerBalance table
+    await run('Table OrganizerBalance', `
+      CREATE TABLE IF NOT EXISTS "OrganizerBalance" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        "organizerId" TEXT UNIQUE NOT NULL,
+        balance DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalDeposited" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "totalSpent" DOUBLE PRECISION NOT NULL DEFAULT 0,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        "updatedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        CONSTRAINT fk_orgbalance_org FOREIGN KEY ("organizerId") REFERENCES "Organizer"(id)
+      );
+    `);
+
     const tables = await prisma.$queryRawUnsafe<{ tablename: string }[]>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;`
     );
