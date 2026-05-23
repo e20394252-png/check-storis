@@ -66,6 +66,22 @@ export default function App() {
   const [walletLoading, setWalletLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
   const [withdrawMsg, setWithdrawMsg] = useState('');
+  const [theme, setTheme] = useState<'light'|'dark'>('light');
+
+  // Apply theme
+  useEffect(() => {
+    const saved = localStorage.getItem('cs-theme') as 'light'|'dark'|null;
+    const initial = saved || 'light';
+    setTheme(initial);
+    document.documentElement.setAttribute('data-theme', initial);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('cs-theme', next);
+  };
 
   useEffect(() => {
     const applyTg = () => {
@@ -326,6 +342,21 @@ export default function App() {
       {/* CryptoBot hint */}
       <div style={{ marginTop:16, padding:'12px 16px', background:'rgba(212,168,83,0.06)', border:'1px solid rgba(212,168,83,0.15)', borderRadius:10, fontSize:12, color:'var(--text-muted)', textAlign:'center' }}>
         💡 Для вывода средств активируйте <a href="https://t.me/CryptoBot" target="_blank" rel="noopener" style={{ color:'var(--accent-gold)' }}>@CryptoBot</a> в Telegram
+      </div>
+
+      {/* Theme toggle */}
+      <div onClick={toggleTheme} className="theme-toggle" style={{ marginTop:16 }}>
+        <div className="theme-toggle-track">
+          <div className={`theme-toggle-thumb ${theme === 'dark' ? 'dark' : ''}`} />
+        </div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:14, fontWeight:600, color:'var(--text-primary)' }}>
+            {theme === 'light' ? '☀️ Светлая тема' : '🌙 Тёмная тема'}
+          </div>
+          <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:2 }}>
+            Нажмите для переключения
+          </div>
+        </div>
       </div>
     </div>
   );
