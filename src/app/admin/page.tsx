@@ -129,7 +129,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
-        <div style={{ width: 40, height: 40, border: '3px solid rgba(200,168,110,0.2)', borderTopColor: 'var(--accent-gold)', borderRadius: '50%' }} className="spin" />
+        <div style={{ width: 40, height: 40, border: '3px solid var(--border-subtle)', borderTopColor: 'var(--accent-gold)', borderRadius: '50%' }} className="spin" />
         <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>
       </div>
     );
@@ -139,8 +139,8 @@ export default function AdminPage() {
   if (!organizer) {
     const inputStyle: React.CSSProperties = {
       width: '100%', padding: '12px 16px', fontSize: 15, borderRadius: 10,
-      border: '1px solid rgba(200,168,110,0.25)', background: 'rgba(200,168,110,0.05)',
-      color: '#f0e6d6', outline: 'none',
+      border: '1px solid var(--border-glow)', background: 'var(--bg-card-hover)',
+      color: 'var(--text-primary)', outline: 'none',
     };
 
     return (
@@ -244,7 +244,7 @@ export default function AdminPage() {
 
             {tgState === 'waiting' && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
-                <div style={{ width: 36, height: 36, border: '3px solid rgba(200,168,110,0.2)', borderTopColor: 'var(--accent-gold)', borderRadius: '50%' }} className="spin" />
+                <div style={{ width: 36, height: 36, border: '3px solid var(--border-subtle)', borderTopColor: 'var(--accent-gold)', borderRadius: '50%' }} className="spin" />
                 <div style={{ fontSize: 14, color: 'var(--accent-cream)', fontWeight: 600 }}>Ожидаем подтверждение в боте...</div>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)', maxWidth: 320 }}>
                   Перейдите в бот и нажмите <b>Start</b>. <a href="#" onClick={e => { e.preventDefault(); startTelegramLogin(); }} style={{ color: 'var(--accent-gold)' }}>Попробовать ещё раз</a>

@@ -6,11 +6,11 @@ type Ev = { id: string; title: string; description?: string|null; date?: string|
 type Reg = { id: string; status: string; proofUrl?: string|null; storyUrl?: string|null; adminNote?: string|null; paidAmount?: number|null; createdAt: string; updatedAt: string; user: { first_name?: string|null; username?: string|null }; event: { id?: string; title?: string|null; isPaidRepost?: boolean; repostRewardUsdt?: number|null } };
 type OrgItem = { id: string; telegram_id: string; first_name?: string|null; username?: string|null; login?: string|null; photo_url?: string|null; status: string; isSuperAdmin: boolean; createdAt: string; _count?: { events: number } };
 
-const gold = '#c8a86e'; const warm = '#d4a853'; const cream = '#f5e6c8';
-const success = '#8fbc6a'; const error = '#c75c5c'; const muted = '#8a7a66';
-const card = '#2a2218'; const bg = '#1a1410';
+const gold = 'var(--accent-gold)'; const warm = 'var(--accent-warm)'; const cream = 'var(--accent-cream)';
+const success = 'var(--accent-success)'; const error = 'var(--accent-error)'; const muted = 'var(--text-muted)';
+const card = 'var(--bg-card)'; const bg = 'var(--bg-primary)';
 
-const inp: React.CSSProperties = { width:'100%', padding:'10px 14px', background:'rgba(200,168,110,0.05)', border:'1px solid rgba(200,168,110,0.18)', borderRadius:8, color:'#f0e6d6', fontSize:14, outline:'none' };
+const inp: React.CSSProperties = { width:'100%', padding:'10px 14px', background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:8, color:'var(--text-primary)', fontSize:14, outline:'none' };
 
 export default function AdminClient({ organizer, onLogout }: { organizer: Org; onLogout: () => void }) {
   const [tab, setTab] = useState('pending');
@@ -23,6 +23,21 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const [pushState, setPushState] = useState<Record<string, { status: string; msg?: string }>>({});
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [theme, setTheme] = useState<'light'|'dark'>('light');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('cs-theme') as 'light'|'dark'|null;
+    const initial = saved || 'light';
+    setTheme(initial);
+    document.documentElement.setAttribute('data-theme', initial);
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    document.documentElement.setAttribute('data-theme', next);
+    localStorage.setItem('cs-theme', next);
+  };
 
   const load = async () => {
     const [eRes, rRes] = await Promise.all([
@@ -96,16 +111,16 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   };
 
   const TabBtn = ({ id, label, count }: { id: string; label: string; count?: number }) => (
-    <button onClick={() => setTab(id)} style={{ padding:'9px 18px', fontSize:13, fontWeight:600, borderRadius:8, background: tab===id ? 'rgba(200,168,110,0.12)' : 'transparent', border: tab===id ? '1px solid rgba(200,168,110,0.4)' : '1px solid rgba(255,255,255,0.08)', color: tab===id ? gold : muted, cursor:'pointer', display:'inline-flex', gap:8, alignItems:'center' }}>
+    <button onClick={() => setTab(id)} style={{ padding:'9px 18px', fontSize:13, fontWeight:600, borderRadius:8, background: tab===id ? 'var(--bg-card)' : 'transparent', border: tab===id ? '1px solid var(--border-glow)' : '1px solid var(--border-subtle)', color: tab===id ? gold : muted, cursor:'pointer', display:'inline-flex', gap:8, alignItems:'center', transition:'all 0.25s' }}>
       {label}
-      {count !== undefined && <span style={{ background:'rgba(255,255,255,0.08)', borderRadius:12, padding:'1px 7px', fontSize:11 }}>{count}</span>}
+      {count !== undefined && <span style={{ background:'var(--border-subtle)', borderRadius:12, padding:'1px 7px', fontSize:11 }}>{count}</span>}
     </button>
   );
 
   return (
-    <div style={{ minHeight:'100vh', background:bg, color:'#f0e6d6', fontFamily:'Inter,sans-serif' }}>
+    <div style={{ minHeight:'100vh', background:bg, color:'var(--text-primary)', fontFamily:'Inter,sans-serif', transition:'background 0.35s ease, color 0.35s ease' }}>
       {/* Шапка */}
-      <div style={{ padding:'18px 28px', borderBottom:'1px solid rgba(200,168,110,0.12)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+      <div style={{ padding:'18px 28px', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
         <div>
           <div style={{ fontSize:10, color:gold, letterSpacing:'0.1em', opacity:0.6 }}>ПАНЕЛЬ ОРГАНИЗАТОРА</div>
           <h1 style={{ fontSize:18, fontWeight:800 }}>{organizer.first_name || organizer.username} {organizer.isSuperAdmin && <span style={{ fontSize:11, color:warm }}>👑 Суперадмин</span>}</h1>
@@ -119,12 +134,13 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             <div style={{ fontSize:22, fontWeight:800, fontFamily:'monospace', color:success }}>{approved.length}</div>
             <div style={{ fontSize:11, color:muted }}>одобрено</div>
           </div>
-          <button onClick={onLogout} style={{ padding:'8px 16px', background:'transparent', border:'1px solid rgba(200,168,110,0.2)', borderRadius:8, color:muted, cursor:'pointer', fontSize:12 }}>Выйти</button>
+          <button onClick={toggleTheme} style={{ padding:'8px 16px', background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:8, color:muted, cursor:'pointer', fontSize:16, lineHeight:1, transition:'all 0.25s' }} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>{theme === 'light' ? '🌙' : '☀️'}</button>
+          <button onClick={onLogout} style={{ padding:'8px 16px', background:'transparent', border:'1px solid var(--border-subtle)', borderRadius:8, color:muted, cursor:'pointer', fontSize:12 }}>Выйти</button>
         </div>
       </div>
 
       {/* Табы */}
-      <div style={{ padding:'14px 28px', borderBottom:'1px solid rgba(200,168,110,0.08)', display:'flex', gap:8, flexWrap:'wrap' }}>
+      <div style={{ padding:'14px 28px', borderBottom:'1px solid var(--border-subtle)', display:'flex', gap:8, flexWrap:'wrap' }}>
         <TabBtn id="pending" label="🔍 На проверке" count={pending.length} />
         <TabBtn id="approved" label="✅ Одобренные" count={approved.length} />
         <TabBtn id="rejected" label="❌ Отклонённые" count={rejected.length} />
@@ -140,8 +156,8 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             {pending.length === 0 ? (
               <div style={{ textAlign:'center', padding:'60px 0', color:muted }}><div style={{ fontSize:48, marginBottom:12 }}>🎉</div><div style={{ fontSize:16, fontWeight:600 }}>Всё проверено!</div></div>
             ) : pending.map(r => (
-              <div key={r.id} style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, overflow:'hidden', marginBottom:20 }}>
-                <div style={{ padding:'16px 20px', borderBottom:'1px solid rgba(200,168,110,0.08)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+              <div key={r.id} style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, overflow:'hidden', marginBottom:20 }}>
+                <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div>
                     <div style={{ fontWeight:700, fontSize:15 }}>{r.user.first_name || '—'}{r.user.username && <span style={{ color:muted, fontWeight:400, fontSize:13 }}> @{r.user.username}</span>}</div>
                     <div style={{ fontSize:11, color:muted, marginTop:3 }}>
@@ -152,13 +168,13 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                   <span className="badge-pending">НА ПРОВЕРКЕ</span>
                 </div>
                 {r.proofUrl && (
-                  <div style={{ padding:'14px 20px', borderBottom:'1px solid rgba(200,168,110,0.08)' }}>
+                  <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize:10, color:muted, marginBottom:10 }}>СКРИНШОТ</div>
-                    <img src={r.proofUrl} alt="proof" style={{ maxWidth:'100%', maxHeight:500, borderRadius:10, border:'1px solid rgba(200,168,110,0.15)', objectFit:'contain', display:'block' }} />
+                    <img src={r.proofUrl} alt="proof" style={{ maxWidth:'100%', maxHeight:500, borderRadius:10, border:'1px solid var(--border-subtle)', objectFit:'contain', display:'block' }} />
                   </div>
                 )}
                 {r.storyUrl && (
-                  <div style={{ padding:'10px 20px', borderBottom:'1px solid rgba(200,168,110,0.08)' }}>
+                  <div style={{ padding:'10px 20px', borderBottom:'1px solid var(--border-subtle)' }}>
                     <div style={{ fontSize:10, color:muted, marginBottom:4 }}>ССЫЛКА НА СТОРИС</div>
                     <a href={r.storyUrl} target="_blank" rel="noopener noreferrer" style={{ color:gold, fontSize:13 }}>{r.storyUrl}</a>
                   </div>
@@ -220,7 +236,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
           };
 
           const renderEventCard = (ev: Ev) => (
-            <div key={ev.id} style={{ background:card, border:`1px solid ${ev.isActive ? 'rgba(200,168,110,0.2)' : 'rgba(255,255,255,0.07)'}`, borderRadius:12, padding:'16px 20px', marginBottom:12 }}>
+            <div key={ev.id} style={{ background:card, border:`1px solid ${ev.isActive ? 'var(--border-subtle)' : 'rgba(255,255,255,0.07)'}`, borderRadius:12, padding:'16px 20px', marginBottom:12 }}>
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap' }}>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
@@ -239,10 +255,10 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                   </div>
                 </div>
                 <div style={{ display:'flex', gap:8 }}>
-                  <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
+                  <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'var(--border-subtle)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
                     {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
                   </button>
-                  <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
+                  <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'var(--border-subtle)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
                   <button onClick={() => delEvent(ev.id)} disabled={busy===ev.id} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background: deleteConfirm===ev.id ? 'rgba(199,92,92,0.2)' : 'rgba(199,92,92,0.07)', border: `1px solid ${deleteConfirm===ev.id ? 'rgba(199,92,92,0.5)' : 'rgba(199,92,92,0.2)'}`, color:error, cursor:'pointer', transition:'all 0.2s', whiteSpace:'nowrap' }}>{busy===ev.id ? '...' : deleteConfirm===ev.id ? '❓ Точно?' : '🗑'}</button>
                 </div>
               </div>
@@ -265,7 +281,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                   )}
                   <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                     {ev.campaignStatus === 'draft' && (
-                      <button onClick={() => handlePayCampaign(ev.id)} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg, rgba(212,168,83,0.2), rgba(200,168,110,0.2))', border:'1px solid rgba(212,168,83,0.5)', color:warm, cursor:'pointer' }}>
+                      <button onClick={() => handlePayCampaign(ev.id)} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg, rgba(212,168,83,0.2), var(--border-subtle))', border:'1px solid rgba(212,168,83,0.5)', color:warm, cursor:'pointer' }}>
                         {busy===ev.id ? '...' : '💳 Оплатить кампанию'}
                       </button>
                     )}
@@ -276,7 +292,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                     )}
                     {ev.campaignStatus === 'active' && (
                       <>
-                        <button onClick={() => handleCampaignAction(ev.id, 'pause')} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:600, borderRadius:8, background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.2)', color:muted, cursor:'pointer' }}>
+                        <button onClick={() => handleCampaignAction(ev.id, 'pause')} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:600, borderRadius:8, background:'var(--border-subtle)', border:'1px solid var(--border-subtle)', color:muted, cursor:'pointer' }}>
                           ⏸ Приостановить
                         </button>
                         <button onClick={() => {
@@ -314,7 +330,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                 <div>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:20 }}>
                     <div style={{ fontSize:12, color:muted }}>Мероприятия ({activeEvents.length})</div>
-                    <button onClick={() => setCreating(true)} style={{ padding:'9px 18px', fontSize:13, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg,rgba(200,168,110,0.15),rgba(212,168,83,0.15))', border:'1px solid rgba(200,168,110,0.4)', color:gold, cursor:'pointer' }}>+ Создать</button>
+                    <button onClick={() => setCreating(true)} style={{ padding:'9px 18px', fontSize:13, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg,var(--border-subtle),rgba(212,168,83,0.15))', border:'1px solid var(--border-glow)', color:gold, cursor:'pointer' }}>+ Создать</button>
                   </div>
                   {activeEvents.length === 0 && (
                     <div style={{ textAlign:'center', padding:'40px 0', color:muted, fontSize:14 }}>Нет актуальных мероприятий</div>
@@ -328,7 +344,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                         onClick={() => setArchiveOpen(!archiveOpen)}
                         style={{
                           width:'100%', padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between',
-                          background:'rgba(200,168,110,0.04)', border:'1px solid rgba(200,168,110,0.12)', borderRadius:10,
+                          background:'rgba(200,168,110,0.04)', border:'1px solid var(--border-subtle)', borderRadius:10,
                           color:muted, fontSize:13, fontWeight:600, cursor:'pointer', transition:'all 0.2s'
                         }}
                       >
@@ -373,16 +389,16 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
 function RegList({ rows, color, empty }: { rows: Reg[]; color: string; empty: string }) {
   if (rows.length === 0) return <div style={{ textAlign:'center', padding:'60px 0', color:muted }}>{empty}</div>;
   return (
-    <div style={{ overflowX:'auto', borderRadius:12, border:'1px solid rgba(200,168,110,0.12)' }}>
+    <div style={{ overflowX:'auto', borderRadius:12, border:'1px solid var(--border-subtle)' }}>
       <table style={{ width:'100%', borderCollapse:'collapse' }}>
-        <thead><tr style={{ background:'rgba(200,168,110,0.03)', borderBottom:'1px solid rgba(200,168,110,0.12)' }}>
+        <thead><tr style={{ background:'rgba(200,168,110,0.03)', borderBottom:'1px solid var(--border-subtle)' }}>
           {['Имя','@username','Мероприятие','Дата'].map(h => <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:muted, textTransform:'uppercase' }}>{h}</th>)}
         </tr></thead>
         <tbody>{rows.map(r => (
-          <tr key={r.id}><td style={{ padding:'13px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:13, fontWeight:600, color }}>{r.user.first_name||'—'}</td>
-          <td style={{ padding:'13px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:13, color:muted }}>{r.user.username ? `@${r.user.username}` : '—'}</td>
-          <td style={{ padding:'13px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:12, color:gold }}>{r.event.title||'—'}</td>
-          <td style={{ padding:'13px 16px', borderBottom:'1px solid rgba(255,255,255,0.04)', fontSize:11, color:muted }}>{new Date(r.updatedAt).toLocaleString('ru-RU')}</td></tr>
+          <tr key={r.id}><td style={{ padding:'13px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:13, fontWeight:600, color }}>{r.user.first_name||'—'}</td>
+          <td style={{ padding:'13px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:13, color:muted }}>{r.user.username ? `@${r.user.username}` : '—'}</td>
+          <td style={{ padding:'13px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:12, color:gold }}>{r.event.title||'—'}</td>
+          <td style={{ padding:'13px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:11, color:muted }}>{new Date(r.updatedAt).toLocaleString('ru-RU')}</td></tr>
         ))}</tbody>
       </table>
     </div>
@@ -456,7 +472,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
   const submit = () => onSave({ title, description:desc||null, date:date||null, location:loc||null, repostUrl:url||null, isActive:active, imageUrl:img||null, price: price ? Number(price) : null, discountPrice: discountPrice ? Number(discountPrice) : null, isPaidRepost, repostRewardUsdt: isPaidRepost && rewardUsdt ? Number(rewardUsdt) : null, repostsNeeded: isPaidRepost && repostsNeeded ? Number(repostsNeeded) : null });
 
   return (
-    <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:24 }}>
+    <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:24 }}>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:20 }}>
         <div style={{ fontSize:12, color:muted }}>{event ? 'Редактировать' : 'Новое мероприятие'}</div>
         <button onClick={onCancel} style={{ fontSize:12, color:muted, background:'none', border:'none', cursor:'pointer' }}>← Назад</button>
@@ -464,7 +480,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
 
       {/* Парсинг ссылки */}
       {!event && (
-        <div style={{ marginBottom:20, padding:'16px 18px', background:'rgba(200,168,110,0.04)', border:'1px solid rgba(200,168,110,0.15)', borderRadius:10 }}>
+        <div style={{ marginBottom:20, padding:'16px 18px', background:'rgba(200,168,110,0.04)', border:'1px solid var(--border-subtle)', borderRadius:10 }}>
           <label style={{ fontSize:11, color:gold, display:'block', marginBottom:8, fontWeight:600 }}>🔗 ВСТАВЬ ССЫЛКУ НА ПОСТ — ЗАПОЛНИМ АВТОМАТИЧЕСКИ</label>
           <div style={{ display:'flex', gap:8 }}>
             <input
@@ -475,8 +491,8 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
             />
             <button onClick={handleParse} disabled={parsing || !parseUrl.trim()} style={{
               padding:'10px 18px', fontSize:13, fontWeight:700, borderRadius:8, whiteSpace:'nowrap',
-              background: parsing ? 'rgba(200,168,110,0.08)' : 'linear-gradient(135deg,rgba(200,168,110,0.15),rgba(212,168,83,0.15))',
-              border:'1px solid rgba(200,168,110,0.4)', color:gold, cursor: parsing ? 'wait' : 'pointer',
+              background: parsing ? 'var(--border-subtle)' : 'linear-gradient(135deg,var(--border-subtle),rgba(212,168,83,0.15))',
+              border:'1px solid var(--border-glow)', color:gold, cursor: parsing ? 'wait' : 'pointer',
             }}>
               {parsing ? '⏳ Распознаём...' : '✨ Распознать'}
             </button>
@@ -525,7 +541,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
           <input ref={imgRef} type="file" accept="image/*" onChange={onImg} style={{ display:'none' }} />
           {img ? (
             <div>
-              <img src={img} alt="preview" style={{ maxWidth:'100%', maxHeight:200, borderRadius:10, border:'1px solid rgba(200,168,110,0.15)', objectFit:'contain', display:'block', marginBottom:8 }} />
+              <img src={img} alt="preview" style={{ maxWidth:'100%', maxHeight:200, borderRadius:10, border:'1px solid var(--border-subtle)', objectFit:'contain', display:'block', marginBottom:8 }} />
               <button onClick={()=>setImg('')} style={{ fontSize:12, color:muted, background:'none', border:'none', cursor:'pointer' }}>✕ Удалить</button>
             </div>
           ) : (
@@ -543,7 +559,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
         </div>
         {/* Paid repost section */}
         <div style={{ gridColumn:'1/-1' }}>
-          <div style={{ padding:'16px 18px', background: isPaidRepost ? 'rgba(212,168,83,0.06)' : 'rgba(200,168,110,0.03)', border:`1px solid ${isPaidRepost ? 'rgba(212,168,83,0.25)' : 'rgba(200,168,110,0.12)'}`, borderRadius:12, transition:'all 0.3s' }}>
+          <div style={{ padding:'16px 18px', background: isPaidRepost ? 'rgba(212,168,83,0.06)' : 'rgba(200,168,110,0.03)', border:`1px solid ${isPaidRepost ? 'rgba(212,168,83,0.25)' : 'var(--border-subtle)'}`, borderRadius:12, transition:'all 0.3s' }}>
             <label style={{ fontSize:14, display:'flex', alignItems:'center', gap:10, cursor:'pointer', fontWeight:600, color: isPaidRepost ? warm : muted }}>
               <input type="checkbox" checked={isPaidRepost} onChange={e=>setIsPaidRepost(e.target.checked)} style={{ width:18, height:18, accentColor:warm }} />
               💰 Платный репост
@@ -609,10 +625,10 @@ function OrgCard({ org, busy, onReview, onUpdate }: {
     setTimeout(() => setSaveMsg(''), 3000);
   };
 
-  const smallInp: React.CSSProperties = { padding:'6px 10px', fontSize:13, borderRadius:6, border:'1px solid rgba(200,168,110,0.2)', background:'rgba(200,168,110,0.05)', color:'#f0e6d6', outline:'none', width: 140 };
+  const smallInp: React.CSSProperties = { padding:'6px 10px', fontSize:13, borderRadius:6, border:'1px solid var(--border-subtle)', background:'var(--bg-card-hover)', color:'var(--accent-cream)', outline:'none', width: 140 };
 
   return (
-    <div style={{ background: card, border:'1px solid rgba(200,168,110,0.12)', borderRadius:12, padding:'16px 20px', marginBottom:12 }}>
+    <div style={{ background: card, border:'1px solid var(--border-subtle)', borderRadius:12, padding:'16px 20px', marginBottom:12 }}>
       <div style={{ display:'flex', justifyContent:'space-between', alignItems:'flex-start', gap:12, flexWrap:'wrap' }}>
         <div>
           <div style={{ fontWeight:700, fontSize:15 }}>
@@ -637,7 +653,7 @@ function OrgCard({ org, busy, onReview, onUpdate }: {
             <span style={{ fontSize:11, fontWeight:700, color: org.status==='APPROVED' ? success : error }}>{org.status==='APPROVED' ? '✅ Одобрен' : '❌ Отклонён'}</span>
           )}
           {!org.isSuperAdmin && (
-            <button onClick={() => setEditing(!editing)} style={{ padding:'6px 12px', fontSize:11, borderRadius:6, cursor:'pointer', background:'transparent', border:'1px solid rgba(200,168,110,0.2)', color: muted }}>
+            <button onClick={() => setEditing(!editing)} style={{ padding:'6px 12px', fontSize:11, borderRadius:6, cursor:'pointer', background:'transparent', border:'1px solid var(--border-subtle)', color: muted }}>
               {editing ? '✕' : '✏️'}
             </button>
           )}
@@ -699,7 +715,7 @@ function CryptoBotPanel() {
       <div style={{ fontSize:12, color:muted, marginBottom:20 }}>💳 CryptoBot интеграция</div>
 
       {/* Connection status */}
-      <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
+      <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
         <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16 }}>
           <div style={{
             width:12, height:12, borderRadius:'50%',
@@ -733,7 +749,7 @@ function CryptoBotPanel() {
       </div>
 
       {/* Webhook URL */}
-      <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
+      <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
         <div style={{ fontWeight:700, fontSize:14, marginBottom:12 }}>🔗 Webhook URL</div>
         <div style={{ fontSize:12, color:muted, marginBottom:14, lineHeight:1.6 }}>
           Скопируйте URL и вставьте в настройках приложения в{' '}
@@ -746,7 +762,7 @@ function CryptoBotPanel() {
           <>
             <div style={{ display:'flex', gap:8, alignItems:'stretch' }}>
               <div style={{
-                flex:1, padding:'12px 16px', background:'rgba(200,168,110,0.06)', border:'1px solid rgba(200,168,110,0.2)',
+                flex:1, padding:'12px 16px', background:'rgba(200,168,110,0.06)', border:'1px solid var(--border-subtle)',
                 borderRadius:8, fontSize:13, color:cream, fontFamily:'monospace', wordBreak:'break-all', lineHeight:1.5,
               }}>
                 {status.webhookUrl}
@@ -754,7 +770,7 @@ function CryptoBotPanel() {
               <button onClick={copyUrl} style={{
                 padding:'12px 18px', borderRadius:8, fontSize:13, fontWeight:700, cursor:'pointer', whiteSpace:'nowrap',
                 background: copied ? 'rgba(143,188,106,0.15)' : 'rgba(200,168,110,0.1)',
-                border: `1px solid ${copied ? 'rgba(143,188,106,0.4)' : 'rgba(200,168,110,0.3)'}`,
+                border: `1px solid ${copied ? 'rgba(143,188,106,0.4)' : 'var(--border-glow)'}`,
                 color: copied ? success : gold, transition:'all 0.2s',
               }}>
                 {copied ? '✅' : '📋 Копировать'}
@@ -764,7 +780,7 @@ function CryptoBotPanel() {
             <div style={{ marginTop:14 }}>
               <button onClick={testWebhook} disabled={testing} style={{
                 padding:'10px 20px', fontSize:13, fontWeight:600, borderRadius:8, cursor:'pointer',
-                background:'rgba(200,168,110,0.08)', border:'1px solid rgba(200,168,110,0.2)', color:muted,
+                background:'var(--border-subtle)', border:'1px solid var(--border-subtle)', color:muted,
                 opacity: testing ? 0.6 : 1,
               }}>
                 {testing ? '⏳ Проверяем...' : '🧪 Проверить URL'}
@@ -788,7 +804,7 @@ function CryptoBotPanel() {
       </div>
 
       {/* Instructions */}
-      <div style={{ background:card, border:'1px solid rgba(200,168,110,0.15)', borderRadius:14, padding:'20px 24px' }}>
+      <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:'20px 24px' }}>
         <div style={{ fontWeight:700, fontSize:14, marginBottom:14 }}>📋 Как настроить Webhook</div>
         <div style={{ fontSize:13, color:muted, lineHeight:2 }}>
           <div style={{ marginBottom:4 }}>
