@@ -4,9 +4,11 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
+  const { getSession } = await import('@/lib/admin-session');
+  const me = await getSession();
   const key = req.nextUrl.searchParams.get('key');
   const adminSecret = process.env.ADMIN_SECRET || 'checkStoris2026';
-  if (key !== adminSecret) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!me?.isSuperAdmin && key !== adminSecret) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) return NextResponse.json({ error: 'DATABASE_URL not set' }, { status: 500 });
@@ -230,9 +232,16 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
+  // Allow superadmin session OR admin secret key
+  const { getSession } = await import('@/lib/admin-session');
+  const me = await getSession();
   const key = req.nextUrl.searchParams.get('key');
   const adminSecret = process.env.ADMIN_SECRET || 'checkStoris2026';
-  if (key !== adminSecret) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const dbUrl = process.env.DATABASE_URL;
-  return NextResponse.json({ status: 'ready', hasDbUrl: !!dbUrl });
+
+  if (!me?.isSuperAdmin && key !== adminSecret) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Run migration (same as POST)
+  return POST(req);
 }
