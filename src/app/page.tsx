@@ -460,8 +460,8 @@ export default function App() {
               </div>
             )}
 
-            {/* Кнопки оплаты */}
-            {(ev.price || ev.discountPrice) && !isPast && (
+            {/* Кнопки оплаты — только для обычных мероприятий (не платный репост) */}
+            {!ev.isPaidRepost && (ev.price || ev.discountPrice) && !isPast && (
               <div style={{ display: 'flex', gap: 10, marginBottom: 10 }}>
                 {ev.price && (
                   <button onClick={() => handlePayment(ev, 'full')} className="warm-btn-primary" style={{ flex: 1, padding: '13px 10px', fontSize: 14, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
@@ -487,6 +487,14 @@ export default function App() {
                     <span style={{ fontSize: 11, opacity: 0.8 }}>{regStatus === 'approved' ? 'Оплатить со скидкой' : '🔒 Сделай репост'}</span>
                   </button>
                 )}
+              </div>
+            )}
+
+            {/* Для платных репостов — инфо о награде */}
+            {ev.isPaidRepost && regStatus === 'approved' && reg?.paidAmount && (
+              <div style={{ padding:'12px 16px', background:'rgba(143,188,106,0.08)', border:'1px solid rgba(143,188,106,0.25)', borderRadius:10, marginBottom:10, textAlign:'center' }}>
+                <div style={{ fontSize:13, fontWeight:700, color:'var(--accent-success)' }}>💸 Начислено {reg.paidAmount} USDT</div>
+                <div style={{ fontSize:11, color:'var(--text-muted)', marginTop:4 }}>Средства на вашем балансе → вкладка «Кабинет»</div>
               </div>
             )}
 
