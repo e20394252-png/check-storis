@@ -173,6 +173,7 @@ export async function POST(req: NextRequest) {
     await run('Event.campaignStatus', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "campaignStatus" TEXT;`);
     await run('Event.invoiceId', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "invoiceId" TEXT;`);
     await run('Event.invoiceUrl', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "invoiceUrl" TEXT;`);
+    await run('Event.isFeatured', `ALTER TABLE "Event" ADD COLUMN IF NOT EXISTS "isFeatured" BOOLEAN NOT NULL DEFAULT FALSE;`);
 
     // Registration — paidAmount
     await run('Registration.paidAmount', `ALTER TABLE "Registration" ADD COLUMN IF NOT EXISTS "paidAmount" DOUBLE PRECISION;`);

@@ -129,6 +129,11 @@ export async function PUT(req: NextRequest) {
     }
   }
 
+  // Handle isFeatured (superadmin only)
+  if (body.isFeatured !== undefined && me.isSuperAdmin) {
+    updateData.isFeatured = !!body.isFeatured;
+  }
+
   const event = await prisma.event.update({
     where: { id: eventId },
     data: updateData,

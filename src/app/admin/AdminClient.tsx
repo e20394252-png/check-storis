@@ -2,7 +2,7 @@
 import { useEffect, useState, useRef } from 'react';
 
 type Org = { id: string; first_name?: string|null; username?: string|null; status: string; isSuperAdmin: boolean };
-type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; isPaidRepost?: boolean; repostRewardUsdt?: number|null; repostsNeeded?: number|null; repostsFilled?: number; campaignBudget?: number|null; campaignTotal?: number|null; campaignStatus?: string|null; invoiceUrl?: string|null; _count?: { registrations: number } };
+type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; isFeatured?: boolean; isPaidRepost?: boolean; repostRewardUsdt?: number|null; repostsNeeded?: number|null; repostsFilled?: number; campaignBudget?: number|null; campaignTotal?: number|null; campaignStatus?: string|null; invoiceUrl?: string|null; _count?: { registrations: number } };
 type Reg = { id: string; status: string; proofUrl?: string|null; storyUrl?: string|null; adminNote?: string|null; paidAmount?: number|null; createdAt: string; updatedAt: string; user: { first_name?: string|null; username?: string|null }; event: { id?: string; title?: string|null; isPaidRepost?: boolean; repostRewardUsdt?: number|null } };
 type OrgItem = { id: string; telegram_id: string; first_name?: string|null; username?: string|null; login?: string|null; photo_url?: string|null; status: string; isSuperAdmin: boolean; createdAt: string; _count?: { events: number } };
 
@@ -40,15 +40,25 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   };
 
   const load = async () => {
-    const [eRes, rRes] = await Promise.all([
-      fetch('/api/admin/events').then(r=>r.json()),
-      fetch('/api/admin/registrations').then(r=>r.json()),
-    ]);
-    setEvents(eRes.events || []);
-    setRegs(rRes.registrations || []);
-    if (organizer.isSuperAdmin) {
-      const oRes = await fetch('/api/admin/organizers').then(r=>r.json());
-      setOrgs(oRes.organizers || []);
+    try {
+      const [eRes, rRes] = await Promise.all([
+        fetch('/api/admin/events'),
+        fetch('/api/admin/registrations'),
+      ]);
+      const eData = await eRes.json();
+      const rData = await rRes.json();
+      if (eData.error) console.error('[admin] events error:', eData.error, eRes.status);
+      if (rData.error) console.error('[admin] regs error:', rData.error, rRes.status);
+      setEvents(eData.events || []);
+      setRegs(rData.registrations || []);
+      if (organizer.isSuperAdmin) {
+        const oRes = await fetch('/api/admin/organizers');
+        const oData = await oRes.json();
+        if (oData.error) console.error('[admin] orgs error:', oData.error, oRes.status);
+        setOrgs(oData.organizers || []);
+      }
+    } catch (err) {
+      console.error('[admin] load error:', err);
     }
   };
   useEffect(() => { load(); }, []);
@@ -242,7 +252,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
               <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', gap:16, flexWrap:'wrap' }}>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
-                    <span style={{ fontWeight:700, fontSize:15 }}>{ev.title}</span>
+                    <span style={{ fontWeight:700, fontSize:15 }}>{ev.isFeatured && '⭐ '}{ev.title}</span>
                     {ev.isPaidRepost && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background:'rgba(212,168,83,0.15)', color:warm }}>💰 ПЛАТНЫЙ</span>}
                     <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background: ev.isActive ? 'rgba(143,188,106,0.12)' : 'rgba(255,255,255,0.05)', color: ev.isActive ? success : muted }}>{ev.isActive ? 'АКТИВНО' : 'СКРЫТО'}</span>
                     {ev.isPaidRepost && ev.campaignStatus && (() => {
@@ -260,6 +270,14 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                   <button onClick={() => pushEvent(ev.id)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background: pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.15)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.12)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.1)' : 'var(--border-subtle)', border: `1px solid ${pushState[ev.id]?.status==='confirm' ? 'rgba(212,168,83,0.5)' : pushState[ev.id]?.status==='done' ? 'rgba(143,188,106,0.35)' : pushState[ev.id]?.status==='error' ? 'rgba(199,92,92,0.35)' : 'rgba(200,168,110,0.25)'}`, color: pushState[ev.id]?.status==='confirm' ? warm : pushState[ev.id]?.status==='done' ? success : pushState[ev.id]?.status==='error' ? error : gold, cursor:'pointer', whiteSpace:'nowrap' }} disabled={pushState[ev.id]?.status==='sending'}>
                     {pushState[ev.id]?.status==='sending' ? '📤...' : pushState[ev.id]?.status==='confirm' ? '❓ Точно?' : pushState[ev.id]?.status==='done' ? `✅ ${pushState[ev.id]?.msg}` : pushState[ev.id]?.status==='error' ? '❌' : '📣'}
                   </button>
+                  {organizer.isSuperAdmin && (
+                    <button onClick={async () => {
+                      await fetch('/api/admin/events', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: ev.id, isFeatured: !ev.isFeatured }) });
+                      load();
+                    }} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background: ev.isFeatured ? 'rgba(212,168,83,0.2)' : 'var(--border-subtle)', border:`1px solid ${ev.isFeatured ? 'rgba(212,168,83,0.5)' : 'rgba(200,168,110,0.25)'}`, color: ev.isFeatured ? warm : muted, cursor:'pointer', transition:'all 0.2s' }} title={ev.isFeatured ? 'Убрать из главных' : 'Сделать главной'}>
+                      {ev.isFeatured ? '⭐' : '☆'}
+                    </button>
+                  )}
                   <button onClick={() => setEditEv(ev)} style={{ padding:'8px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'var(--border-subtle)', border:'1px solid rgba(200,168,110,0.25)', color:gold, cursor:'pointer' }}>✏️</button>
                   <button onClick={() => delEvent(ev.id)} disabled={busy===ev.id} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background: deleteConfirm===ev.id ? 'rgba(199,92,92,0.2)' : 'rgba(199,92,92,0.07)', border: `1px solid ${deleteConfirm===ev.id ? 'rgba(199,92,92,0.5)' : 'rgba(199,92,92,0.2)'}`, color:error, cursor:'pointer', transition:'all 0.2s', whiteSpace:'nowrap' }}>{busy===ev.id ? '...' : deleteConfirm===ev.id ? '❓ Точно?' : '🗑'}</button>
                 </div>

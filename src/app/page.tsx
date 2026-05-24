@@ -13,6 +13,7 @@ interface EventItem {
   isPaidRepost?: boolean; repostRewardUsdt?: number|null;
   repostsNeeded?: number|null; repostsFilled?: number;
   campaignStatus?: string|null;
+  isFeatured?: boolean;
   registration: { status: string; createdAt: string; adminNote?: string|null; paidAmount?: number|null } | null;
 }
 
@@ -197,7 +198,7 @@ export default function App() {
   const DAY = 24 * 60 * 60 * 1000;
   const currentEvents = events
     .filter(ev => !ev.date || nowMs - new Date(ev.date).getTime() < DAY)
-;
+    .sort((a, b) => (b.isFeatured ? 1 : 0) - (a.isFeatured ? 1 : 0));
   const archivedEvents = events
     .filter(ev => ev.date && nowMs - new Date(ev.date).getTime() >= DAY)
     .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
@@ -404,9 +405,18 @@ export default function App() {
 
         return (
           <div key={ev.id} style={{
-            background: 'var(--bg-card)', border: '1px solid', borderRadius: 16, padding: '18px 20px', marginBottom: 14, position: 'relative', overflow: 'hidden', opacity: isPast ? 0.7 : 1,
-            borderColor: regStatus === 'approved' ? 'rgba(143,188,106,0.3)' : regStatus === 'pending' ? 'rgba(212,168,83,0.25)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.2)' : 'var(--border-subtle)',
+            background: 'var(--bg-card)', border: ev.isFeatured ? '2px solid rgba(212,168,83,0.5)' : '1px solid', borderRadius: 16, padding: '18px 20px', marginBottom: 14, position: 'relative', overflow: 'hidden', opacity: isPast ? 0.7 : 1,
+            borderColor: ev.isFeatured ? 'rgba(212,168,83,0.5)' : regStatus === 'approved' ? 'rgba(143,188,106,0.3)' : regStatus === 'pending' ? 'rgba(212,168,83,0.25)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.2)' : 'var(--border-subtle)',
+            boxShadow: ev.isFeatured ? '0 0 20px rgba(212,168,83,0.12)' : undefined,
           }}>
+            {/* Featured badge */}
+            {ev.isFeatured && (
+              <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10, padding:'6px 12px', background:'linear-gradient(135deg, rgba(212,168,83,0.15), rgba(212,168,83,0.05))', border:'1px solid rgba(212,168,83,0.3)', borderRadius:8 }}>
+                <span style={{ fontSize:14 }}>⭐</span>
+                <span style={{ fontSize:12, fontWeight:700, color:'var(--accent-gold)', letterSpacing:'0.03em' }}>РЕКОМЕНДУЕМ</span>
+              </div>
+            )}
+
             {/* Картинка мероприятия */}
             {ev.imageUrl && <img src={ev.imageUrl} alt="" className="event-image" />}
 

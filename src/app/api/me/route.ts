@@ -78,6 +78,7 @@ export async function GET(req: NextRequest) {
           repostsNeeded: ev.repostsNeeded,
           repostsFilled: ev.repostsFilled,
           campaignStatus: ev.campaignStatus,
+          isFeatured: ev.isFeatured,
           registration: registrationMap[ev.id] || null,
         })),
     });
