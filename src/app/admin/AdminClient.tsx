@@ -616,6 +616,11 @@ function OrgCard({ org, busy, onReview, onUpdate }: {
   const [editLogin, setEditLogin] = useState(org.login || '');
   const [editPassword, setEditPassword] = useState('');
   const [saveMsg, setSaveMsg] = useState('');
+  // Transfer state
+  const [showTransfer, setShowTransfer] = useState(false);
+  const [transferAmount, setTransferAmount] = useState('');
+  const [transferBusy, setTransferBusy] = useState(false);
+  const [transferResult, setTransferResult] = useState<{ ok: boolean; msg: string } | null>(null);
 
   const save = async () => {
     const data: { login?: string; password?: string } = {};
@@ -627,6 +632,30 @@ function OrgCard({ org, busy, onReview, onUpdate }: {
     setEditPassword('');
     setEditing(false);
     setTimeout(() => setSaveMsg(''), 3000);
+  };
+
+  const doTransfer = async () => {
+    const amt = parseFloat(transferAmount);
+    if (!amt || amt <= 0) return;
+    setTransferBusy(true); setTransferResult(null);
+    try {
+      const res = await fetch('/api/admin/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ organizerId: org.id, amount: amt }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTransferResult({ ok: true, msg: `✅ Переведено ${amt} USDT → ${org.first_name || org.username || 'орг'}` });
+        setTransferAmount('');
+        setTimeout(() => { setShowTransfer(false); setTransferResult(null); }, 4000);
+      } else {
+        setTransferResult({ ok: false, msg: `❌ ${data.error}` });
+      }
+    } catch {
+      setTransferResult({ ok: false, msg: '❌ Ошибка сети' });
+    }
+    setTransferBusy(false);
   };
 
   const smallInp: React.CSSProperties = { padding:'6px 10px', fontSize:13, borderRadius:6, border:'1px solid var(--border-subtle)', background:'var(--bg-card-hover)', color:'var(--accent-cream)', outline:'none', width: 140 };
@@ -657,12 +686,55 @@ function OrgCard({ org, busy, onReview, onUpdate }: {
             <span style={{ fontSize:11, fontWeight:700, color: org.status==='APPROVED' ? success : error }}>{org.status==='APPROVED' ? '✅ Одобрен' : '❌ Отклонён'}</span>
           )}
           {!org.isSuperAdmin && (
-            <button onClick={() => setEditing(!editing)} style={{ padding:'6px 12px', fontSize:11, borderRadius:6, cursor:'pointer', background:'transparent', border:'1px solid var(--border-subtle)', color: muted }}>
-              {editing ? '✕' : '✏️'}
-            </button>
+            <>
+              <button onClick={() => setShowTransfer(!showTransfer)} style={{ padding:'6px 12px', fontSize:11, borderRadius:6, cursor:'pointer', background: showTransfer ? 'rgba(212,168,83,0.12)' : 'transparent', border:'1px solid var(--border-subtle)', color: showTransfer ? warm : muted, fontWeight:600, transition:'all 0.2s' }}>
+                💸 Пополнить
+              </button>
+              <button onClick={() => setEditing(!editing)} style={{ padding:'6px 12px', fontSize:11, borderRadius:6, cursor:'pointer', background:'transparent', border:'1px solid var(--border-subtle)', color: muted }}>
+                {editing ? '✕' : '✏️'}
+              </button>
+            </>
           )}
         </div>
       </div>
+
+      {/* Форма перевода USDT */}
+      {showTransfer && !org.isSuperAdmin && (
+        <div style={{ marginTop:12, padding:'14px 16px', background:'var(--bg-card-hover)', border:'1px solid var(--border-subtle)', borderRadius:10 }}>
+          <div style={{ fontSize:12, fontWeight:600, color: warm, marginBottom:10 }}>💸 Перевести USDT из CryptoBot → {org.first_name || org.username || 'организатор'}</div>
+          <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+            <input
+              type="number" step="0.01" min="0.01" placeholder="Сумма USDT"
+              value={transferAmount} onChange={e => setTransferAmount(e.target.value)}
+              style={{ ...smallInp, width:130 }}
+            />
+            <button
+              disabled={transferBusy || !transferAmount || parseFloat(transferAmount) <= 0}
+              onClick={doTransfer}
+              style={{
+                padding:'7px 16px', fontSize:12, fontWeight:700, borderRadius:6, cursor:'pointer',
+                background: 'rgba(143,188,106,0.15)', border:'1px solid rgba(143,188,106,0.3)',
+                color: success, opacity: transferBusy ? 0.6 : 1,
+              }}
+            >
+              {transferBusy ? '⏳ Отправка...' : '✅ Перевести'}
+            </button>
+            <button onClick={() => { setShowTransfer(false); setTransferResult(null); }} style={{ padding:'6px 10px', fontSize:11, borderRadius:6, cursor:'pointer', background:'transparent', border:'1px solid var(--border-subtle)', color: muted }}>
+              ✕
+            </button>
+          </div>
+          {transferResult && (
+            <div style={{
+              marginTop:10, padding:'8px 14px', borderRadius:8, fontSize:12,
+              background: transferResult.ok ? 'rgba(143,188,106,0.08)' : 'rgba(199,92,92,0.08)',
+              border: `1px solid ${transferResult.ok ? 'rgba(143,188,106,0.25)' : 'rgba(199,92,92,0.25)'}`,
+              color: transferResult.ok ? success : error,
+            }}>
+              {transferResult.msg}
+            </div>
+          )}
+        </div>
+      )}
 
       {editing && (
         <div style={{ marginTop:12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
