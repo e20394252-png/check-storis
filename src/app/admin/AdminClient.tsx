@@ -145,6 +145,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
         <TabBtn id="approved" label="✅ Одобренные" count={approved.length} />
         <TabBtn id="rejected" label="❌ Отклонённые" count={rejected.length} />
         <TabBtn id="events" label="📅 Мероприятия" count={events.length} />
+        <TabBtn id="guide" label="💡 Инструкция" />
         {organizer.isSuperAdmin && <TabBtn id="organizers" label="👥 Организаторы" count={pendingOrgs.length} />}
         {organizer.isSuperAdmin && <TabBtn id="cryptobot" label="💳 CryptoBot" />}
       </div>
@@ -377,6 +378,9 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             ))}
           </div>
         )}
+
+        {/* ИНСТРУКЦИЯ */}
+        {tab === 'guide' && <WalletGuide />}
 
         {/* CRYPTOBOT (суперадмин) */}
         {tab === 'cryptobot' && organizer.isSuperAdmin && <CryptoBotPanel />}
@@ -827,6 +831,140 @@ function CryptoBotPanel() {
           </div>
           <div>
             <span style={{ fontWeight:600, color:cream }}>6.</span> Нажмите «🧪 Проверить URL» для подтверждения
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Инструкция по пополнению кошелька
+function WalletGuide() {
+  const sectionStyle: React.CSSProperties = { background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:'20px 24px', marginBottom:16 };
+  const stepStyle: React.CSSProperties = { marginBottom:6, lineHeight:1.8 };
+  const linkStyle: React.CSSProperties = { color:gold, textDecoration:'underline' };
+  const codeStyle: React.CSSProperties = { background:'var(--border-subtle)', padding:'2px 8px', borderRadius:4, color:cream, fontSize:12 };
+  const badgeStyle: React.CSSProperties = { display:'inline-block', fontSize:10, fontWeight:700, padding:'3px 10px', borderRadius:6, marginBottom:14 };
+
+  return (
+    <div>
+      <div style={{ fontSize:12, color:muted, marginBottom:20 }}>💡 Как оплатить мероприятие с платным репостом</div>
+
+      {/* Шаг 1 — Создать кошелёк */}
+      <div style={sectionStyle}>
+        <div style={{ fontWeight:700, fontSize:15, marginBottom:6 }}>1️⃣ Создайте крипто-кошелёк</div>
+        <div style={{ ...badgeStyle, background:'rgba(143,188,106,0.12)', color:success }}>БЕСПЛАТНО</div>
+        <div style={{ fontSize:13, color:muted, lineHeight:1.9 }}>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>1.</span> Откройте{' '}
+            <a href="https://t.me/send?start=r-6yfu9" target="_blank" rel="noopener" style={linkStyle}>@send (Crypto Bot)</a>
+            {' '}в Telegram
+          </div>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>2.</span> Нажмите <b style={{ color:cream }}>Start</b> — кошелёк создаётся автоматически
+          </div>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>3.</span> Готово! Теперь у вас есть кошелёк USDT (TRC-20)
+          </div>
+        </div>
+      </div>
+
+      {/* Шаг 2 — Пополнить */}
+      <div style={sectionStyle}>
+        <div style={{ fontWeight:700, fontSize:15, marginBottom:6 }}>2️⃣ Пополните кошелёк USDT</div>
+        <div style={{ ...badgeStyle, background:'rgba(212,168,83,0.12)', color:warm }}>ВЫБЕРИТЕ СПОСОБ</div>
+
+        {/* Способ А — Анакондос */}
+        <div style={{ background:'var(--bg-card-hover)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:'16px 18px', marginBottom:12 }}>
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:8, color:cream }}>🅰️ Через Anakondos (обмен P2P)</div>
+          <div style={{ fontSize:13, color:muted, lineHeight:1.9 }}>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>1.</span> Откройте{' '}
+              <a href="https://t.me/anakondos_bot?start=jrWvxN" target="_blank" rel="noopener" style={linkStyle}>@anakondos_bot</a>
+            </div>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>2.</span> Выберите <b style={{ color:cream }}>Купить USDT</b> → укажите сумму
+            </div>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>3.</span> Оплатите по реквизитам (карта / СБП)
+            </div>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>4.</span> USDT придут в ваш{' '}
+              <a href="https://t.me/send?start=r-6yfu9" target="_blank" rel="noopener" style={linkStyle}>Crypto Bot</a> кошелёк
+            </div>
+          </div>
+          <div style={{ fontSize:11, color:muted, marginTop:8, padding:'8px 12px', background:'var(--border-subtle)', borderRadius:8 }}>
+            💡 Также можно использовать{' '}
+            <a href="https://Anakondos.com" target="_blank" rel="noopener" style={linkStyle}>Anakondos.com</a>
+          </div>
+        </div>
+
+        {/* Способ Б — Картой РФ */}
+        <div style={{ background:'var(--bg-card-hover)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:'16px 18px' }}>
+          <div style={{ fontWeight:700, fontSize:14, marginBottom:8, color:cream }}>🅱️ Картой РФ (ручной перевод)</div>
+          <div style={{ fontSize:13, color:muted, lineHeight:1.9 }}>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>1.</span> Перейдите по ссылке:{' '}
+              <a href="https://app.leadteh.ru/w/fPwZk" target="_blank" rel="noopener" style={linkStyle}>Оплата картой</a>
+            </div>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>2.</span> Введите сумму и оплатите банковской картой
+            </div>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>3.</span> Отправьте квитанцию об оплате{' '}
+              <a href="https://t.me/andrewsochy" target="_blank" rel="noopener" style={linkStyle}>@andrewsochy</a> в Telegram
+            </div>
+            <div style={stepStyle}>
+              <span style={{ fontWeight:600, color:cream }}>4.</span> Мы пополним ваш Crypto Bot кошелёк вручную
+            </div>
+          </div>
+          <div style={{ fontSize:12, marginTop:10, padding:'10px 14px', background:'rgba(212,168,83,0.08)', border:'1px solid rgba(212,168,83,0.2)', borderRadius:8, color:warm }}>
+            ⚠️ Комиссия за перевод картой: <b>10%</b> (например, оплата 1100₽ → на кошелёк ~1000₽ в USDT)
+          </div>
+        </div>
+      </div>
+
+      {/* Шаг 3 — Оплатить */}
+      <div style={sectionStyle}>
+        <div style={{ fontWeight:700, fontSize:15, marginBottom:6 }}>3️⃣ Оплатите мероприятие</div>
+        <div style={{ fontSize:13, color:muted, lineHeight:1.9 }}>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>1.</span> Создайте мероприятие с галочкой <b style={{ color:cream }}>💰 Платный репост</b>
+          </div>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>2.</span> Укажите стоимость за репост и количество репостов
+          </div>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>3.</span> Система посчитает бюджет + 20% комиссия сервиса
+          </div>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>4.</span> Нажмите <b style={{ color:cream }}>💳 Перейти к оплате</b> — откроется Crypto Bot
+          </div>
+          <div style={stepStyle}>
+            <span style={{ fontWeight:600, color:cream }}>5.</span> Подтвердите оплату → мероприятие активируется автоматически!
+          </div>
+        </div>
+      </div>
+
+      {/* FAQ */}
+      <div style={sectionStyle}>
+        <div style={{ fontWeight:700, fontSize:15, marginBottom:12 }}>❓ Частые вопросы</div>
+        <div style={{ fontSize:13, color:muted, lineHeight:1.8 }}>
+          <div style={{ marginBottom:12 }}>
+            <div style={{ fontWeight:600, color:cream, marginBottom:2 }}>Что такое USDT?</div>
+            Стейблкоин привязанный к доллару США (1 USDT ≈ 1$). Используется для моментальных переводов без банков.
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <div style={{ fontWeight:600, color:cream, marginBottom:2 }}>Безопасно ли это?</div>
+            Да. Crypto Bot — официальный сервис от команды Telegram с миллионами пользователей.
+          </div>
+          <div style={{ marginBottom:12 }}>
+            <div style={{ fontWeight:600, color:cream, marginBottom:2 }}>Куда уходят деньги при оплате мероприятия?</div>
+            Бюджет замораживается и выплачивается пользователям после одобрения их репостов. 20% — комиссия сервиса.
+          </div>
+          <div>
+            <div style={{ fontWeight:600, color:cream, marginBottom:2 }}>Остаток переносится?</div>
+            Да, неиспользованный бюджет остаётся на следующее мероприятие.
           </div>
         </div>
       </div>
