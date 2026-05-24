@@ -116,7 +116,19 @@ export async function POST(req: NextRequest) {
         event.title,
       ).catch(console.error);
     } else {
+      // Notify superadmin (with approve/reject buttons)
       notifyAdminNewRegistration(registration.id, displayName, tgUser.username, proofUrl).catch(console.error);
+
+      // Also notify organizer that a new submission arrived
+      if (event.organizer?.telegram_id) {
+        const { notifyOrgNewSubmission } = await import('@/lib/notify');
+        notifyOrgNewSubmission(
+          event.organizer.telegram_id,
+          displayName,
+          tgUser.username,
+          event.title,
+        ).catch(console.error);
+      }
     }
 
     return NextResponse.json({ success: true, status: 'pending' });

@@ -265,6 +265,29 @@ export async function notifySuperAdminNewEvent(eventId: string, title: string, o
   await Promise.all(ids.map(id => sendMessage(id, text)));
 }
 
+// ─── Уведомление организатору о новой заявке ─────────────────────────────
+
+/** Notify organizer that a new submission arrived for their event */
+export async function notifyOrgNewSubmission(
+  orgTelegramId: bigint,
+  userName: string,
+  username?: string | null,
+  eventTitle?: string,
+) {
+  const adminUrl = APP_URL + '/admin';
+  const text =
+    `📸 <b>Новая заявка!</b>\n\n` +
+    `📅 ${escapeHtml(eventTitle || 'Мероприятие')}\n` +
+    `👤 ${escapeHtml(userName)}${username ? ` (@${escapeHtml(username)})` : ''}\n\n` +
+    `Зайдите в панель организатора для проверки.`;
+
+  await sendMessage(orgTelegramId, text, {
+    reply_markup: JSON.stringify({
+      inline_keyboard: [[{ text: '📋 Открыть панель', url: adminUrl }]],
+    }),
+  });
+}
+
 // ─── Платные репосты: уведомления ─────────────────────────────────────────
 
 /** Notify organizer about a new paid repost submission (with approve/reject buttons) */
