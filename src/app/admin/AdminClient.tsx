@@ -1082,10 +1082,7 @@ function WalletGuide() {
               <a href="https://t.me/send?start=r-6yfu9" target="_blank" rel="noopener" style={linkStyle}>Crypto Bot</a> кошелёк
             </div>
           </div>
-          <div style={{ fontSize:11, color:muted, marginTop:8, padding:'8px 12px', background:'var(--border-subtle)', borderRadius:8 }}>
-            💡 Также можно использовать{' '}
-            <a href="https://Anakondos.com" target="_blank" rel="noopener" style={linkStyle}>Anakondos.com</a>
-          </div>
+
         </div>
 
         {/* Способ Б — Картой РФ */}
@@ -1108,7 +1105,7 @@ function WalletGuide() {
             </div>
           </div>
           <div style={{ fontSize:12, marginTop:10, padding:'10px 14px', background:'rgba(212,168,83,0.08)', border:'1px solid rgba(212,168,83,0.2)', borderRadius:8, color:warm }}>
-            ⚠️ Комиссия за перевод картой: <b>10%</b> (например, оплата 1100₽ → на кошелёк ~1000₽ в USDT)
+            ⚠️ Комиссия за перевод картой: <b>10% + 3 USDT</b> (например, при оплате 1000₽ по курсу ~90₽/USDT → 11.1 USDT − 10% − 3 USDT = <b>~7 USDT</b> на кошелёк)
           </div>
         </div>
       </div>
