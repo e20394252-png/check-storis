@@ -159,6 +159,12 @@ export default function App() {
 
   const handleUpload = async () => {
     if (!selectedImage || !activeEventId || !initData) return;
+    // For paid reposts — story URL is required
+    const currentEvent = meData?.events.find(e => e.id === activeEventId);
+    if (currentEvent?.isPaidRepost && !storyUrl.trim()) {
+      setUploadError('Для платного репоста ссылка на сторис обязательна');
+      return;
+    }
     setUploading(true); setUploadError('');
     try {
       const res = await fetch('/api/register', {

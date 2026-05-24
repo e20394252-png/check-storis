@@ -86,7 +86,7 @@ export async function PUT(req: NextRequest) {
   if (me.status !== 'APPROVED') return NextResponse.json({ error: 'Not approved' }, { status: 403 });
 
   const body = await req.json();
-  const { eventId, title, description, date, location, repostUrl, isActive, imageUrl, price, discountPrice } = body;
+  const { eventId, title, description, date, location, repostUrl, isActive, imageUrl, price, discountPrice, isPaidRepost, repostRewardUsdt, repostsNeeded } = body;
   if (!eventId) return NextResponse.json({ error: 'Event ID required' }, { status: 400 });
 
   const prisma = getPrisma();
@@ -95,19 +95,43 @@ export async function PUT(req: NextRequest) {
     if (!ev || ev.organizerId !== me.id) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
+  // If isPaidRepost is explicitly set in request, handle campaign fields
+  const updateData: Record<string, any> = {
+    title: title || undefined,
+    description: description ?? undefined,
+    date: date ? new Date(date) : null,
+    location: location ?? undefined,
+    repostUrl: repostUrl ?? undefined,
+    price: price != null ? Number(price) : undefined,
+    discountPrice: discountPrice != null ? Number(discountPrice) : undefined,
+    imageUrl: imageUrl ?? undefined,
+    isActive: isActive ?? undefined,
+  };
+
+  // Handle paid repost toggle
+  if (isPaidRepost !== undefined) {
+    updateData.isPaidRepost = !!isPaidRepost;
+    if (!isPaidRepost) {
+      // Turning OFF paid repost → clear all campaign fields
+      updateData.campaignStatus = null;
+      updateData.campaignBudget = null;
+      updateData.campaignTotal = null;
+      updateData.invoiceUrl = null;
+      updateData.repostRewardUsdt = null;
+      updateData.repostsNeeded = null;
+      updateData.repostsFilled = 0;
+    } else if (repostRewardUsdt && repostsNeeded) {
+      updateData.repostRewardUsdt = Number(repostRewardUsdt);
+      updateData.repostsNeeded = Number(repostsNeeded);
+      updateData.campaignBudget = Math.round(Number(repostRewardUsdt) * Number(repostsNeeded) * 100) / 100;
+      updateData.campaignTotal = Math.round(updateData.campaignBudget * 1.2 * 100) / 100;
+      if (!updateData.campaignStatus) updateData.campaignStatus = 'draft';
+    }
+  }
+
   const event = await prisma.event.update({
     where: { id: eventId },
-    data: {
-      title: title || undefined,
-      description: description ?? undefined,
-      date: date ? new Date(date) : null,
-      location: location ?? undefined,
-      repostUrl: repostUrl ?? undefined,
-      price: price != null ? Number(price) : undefined,
-      discountPrice: discountPrice != null ? Number(discountPrice) : undefined,
-      imageUrl: imageUrl ?? undefined,
-      isActive: isActive ?? undefined,
-    },
+    data: updateData,
   });
   return NextResponse.json({ event });
 }
