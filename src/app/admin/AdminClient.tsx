@@ -756,11 +756,16 @@ function CryptoBotPanel() {
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<any>(null);
   const [copied, setCopied] = useState(false);
+  // Deposit state
+  const [depositAmount, setDepositAmount] = useState('');
+  const [depositBusy, setDepositBusy] = useState(false);
+  const [depositResult, setDepositResult] = useState<{ ok: boolean; msg: string; url?: string } | null>(null);
+  const [appBalance, setAppBalance] = useState<number | null>(null);
 
   useEffect(() => {
     fetch('/api/cryptobot/setup-webhook')
       .then(r => r.json())
-      .then(d => { setStatus(d); setLoading(false); })
+      .then(d => { setStatus(d); if (d.balance !== undefined) setAppBalance(d.balance); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);
 
@@ -823,6 +828,99 @@ function CryptoBotPanel() {
           </div>
         )}
       </div>
+
+      {/* Balance & Deposit */}
+      {status?.connected && (
+        <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:16 }}>
+            <div style={{ fontWeight:700, fontSize:14 }}>💰 Баланс приложения</div>
+            <button onClick={async () => {
+              try {
+                const res = await fetch('/api/cryptobot/setup-webhook');
+                const d = await res.json();
+                if (d.balance !== undefined) setAppBalance(d.balance);
+              } catch {}
+            }} style={{ padding:'5px 12px', fontSize:11, borderRadius:6, cursor:'pointer', background:'transparent', border:'1px solid var(--border-subtle)', color:muted }}>
+              🔄 Обновить
+            </button>
+          </div>
+
+          <div style={{ fontSize:28, fontWeight:800, fontFamily:'monospace', color: cream, marginBottom:8 }}>
+            {appBalance !== null ? `${appBalance} USDT` : '— USDT'}
+          </div>
+          <div style={{ fontSize:11, color:muted, marginBottom:16 }}>
+            Этот баланс используется для переводов организаторам
+          </div>
+
+          <div style={{ borderTop:'1px solid var(--border-subtle)', paddingTop:14 }}>
+            <div style={{ fontSize:13, fontWeight:600, color:warm, marginBottom:10 }}>💸 Пополнить баланс приложения</div>
+            <div style={{ fontSize:11, color:muted, marginBottom:10, lineHeight:1.6 }}>
+              Создаст инвойс, который вы оплатите из личного CryptoBot кошелька. Деньги придут на баланс приложения.
+            </div>
+            <div style={{ display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+              <input
+                type="number" step="0.01" min="0.01" placeholder="Сумма USDT"
+                value={depositAmount} onChange={e => setDepositAmount(e.target.value)}
+                style={{ padding:'8px 12px', fontSize:13, borderRadius:6, border:'1px solid var(--border-subtle)', background:'var(--bg-card-hover)', color:cream, outline:'none', width:130 }}
+              />
+              <button
+                disabled={depositBusy || !depositAmount || parseFloat(depositAmount) <= 0}
+                onClick={async () => {
+                  const amt = parseFloat(depositAmount);
+                  if (!amt || amt <= 0) return;
+                  setDepositBusy(true); setDepositResult(null);
+                  try {
+                    const res = await fetch('/api/admin/deposit', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ amount: amt }),
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setDepositResult({ ok: true, msg: `Инвойс на ${amt} USDT создан! Нажмите для оплаты:`, url: data.invoiceUrl });
+                      setDepositAmount('');
+                    } else {
+                      setDepositResult({ ok: false, msg: `❌ ${data.error}` });
+                    }
+                  } catch {
+                    setDepositResult({ ok: false, msg: '❌ Ошибка сети' });
+                  }
+                  setDepositBusy(false);
+                }}
+                style={{
+                  padding:'8px 18px', fontSize:12, fontWeight:700, borderRadius:6, cursor:'pointer',
+                  background:'rgba(143,188,106,0.15)', border:'1px solid rgba(143,188,106,0.3)',
+                  color:success, opacity: depositBusy ? 0.6 : 1,
+                }}
+              >
+                {depositBusy ? '⏳...' : '📄 Создать инвойс'}
+              </button>
+            </div>
+
+            {depositResult && (
+              <div style={{
+                marginTop:10, padding:'10px 14px', borderRadius:8, fontSize:12,
+                background: depositResult.ok ? 'rgba(143,188,106,0.08)' : 'rgba(199,92,92,0.08)',
+                border: `1px solid ${depositResult.ok ? 'rgba(143,188,106,0.25)' : 'rgba(199,92,92,0.25)'}`,
+                color: depositResult.ok ? success : error,
+              }}>
+                {depositResult.msg}
+                {depositResult.url && (
+                  <div style={{ marginTop:8 }}>
+                    <a href={depositResult.url} target="_blank" rel="noopener" style={{
+                      display:'inline-block', padding:'8px 20px', fontSize:13, fontWeight:700,
+                      borderRadius:8, background:'rgba(212,168,83,0.15)', border:'1px solid rgba(212,168,83,0.3)',
+                      color:warm, textDecoration:'none',
+                    }}>
+                      💳 Оплатить {parseFloat(depositAmount) || ''} USDT
+                    </a>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Webhook URL */}
       <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:'20px 24px', marginBottom:16 }}>
