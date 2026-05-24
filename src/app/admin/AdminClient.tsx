@@ -135,6 +135,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             <div style={{ fontSize:11, color:muted }}>одобрено</div>
           </div>
           <button onClick={toggleTheme} style={{ padding:'8px 16px', background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:8, color:muted, cursor:'pointer', fontSize:16, lineHeight:1, transition:'all 0.25s' }} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>{theme === 'light' ? '🌙' : '☀️'}</button>
+          {organizer.isSuperAdmin && <MigrateButton />}
           <button onClick={onLogout} style={{ padding:'8px 16px', background:'transparent', border:'1px solid var(--border-subtle)', borderRadius:8, color:muted, cursor:'pointer', fontSize:12 }}>Выйти</button>
         </div>
       </div>
@@ -1142,3 +1143,36 @@ function WalletGuide() {
   );
 }
 
+
+// Кнопка миграции БД (суперадмин)
+function MigrateButton() {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  const run = async () => {
+    setBusy(true); setResult(null);
+    try {
+      const res = await fetch('/api/admin/migrate');
+      const data = await res.json();
+      if (data.success) {
+        setResult('✅');
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setResult('❌');
+      }
+    } catch {
+      setResult('❌');
+    }
+    setBusy(false);
+  };
+
+  return (
+    <button
+      onClick={run} disabled={busy}
+      style={{ padding:'8px 16px', background:'transparent', border:'1px solid var(--border-subtle)', borderRadius:8, color: result === '✅' ? success : result === '❌' ? error : muted, cursor:'pointer', fontSize:12, opacity: busy ? 0.5 : 1, transition:'all 0.2s' }}
+      title="Миграция базы данных (prisma db push)"
+    >
+      {busy ? '⏳' : result || '🔧 DB'}
+    </button>
+  );
+}
