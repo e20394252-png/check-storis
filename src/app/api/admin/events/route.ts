@@ -125,7 +125,12 @@ export async function PUT(req: NextRequest) {
       updateData.repostsNeeded = Number(repostsNeeded);
       updateData.campaignBudget = Math.round(Number(repostRewardUsdt) * Number(repostsNeeded) * 100) / 100;
       updateData.campaignTotal = Math.round(updateData.campaignBudget * 1.2 * 100) / 100;
-      if (!updateData.campaignStatus) updateData.campaignStatus = 'draft';
+      // Only set draft if there's no existing campaign status (new campaign)
+      const existing = await prisma.event.findUnique({ where: { id: eventId }, select: { campaignStatus: true } });
+      if (!existing?.campaignStatus) {
+        updateData.campaignStatus = 'draft';
+      }
+      // Don't overwrite active/completed/paused statuses
     }
   }
 
