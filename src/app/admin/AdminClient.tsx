@@ -319,9 +319,15 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                   )}
                   <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
                     {ev.campaignStatus === 'draft' && (
-                      <button onClick={() => handlePayCampaign(ev.id)} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg, rgba(212,168,83,0.2), var(--border-subtle))', border:'1px solid rgba(212,168,83,0.5)', color:warm, cursor:'pointer' }}>
-                        {busy===ev.id ? '...' : '💳 Оплатить кампанию'}
-                      </button>
+                      <>
+                        <button onClick={() => handlePayCampaign(ev.id)} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'linear-gradient(135deg, rgba(212,168,83,0.2), var(--border-subtle))', border:'1px solid rgba(212,168,83,0.5)', color:warm, cursor:'pointer' }}>
+                          {busy===ev.id ? '...' : '💳 Оплатить кампанию'}
+                        </button>
+                        {/* For campaigns that were previously active (bug recovery) */}
+                        <button onClick={() => handleCampaignAction(ev.id, 'resume')} disabled={busy===ev.id} style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(143,188,106,0.12)', border:'1px solid rgba(143,188,106,0.3)', color:success, cursor:'pointer' }}>
+                          {busy===ev.id ? '...' : '▶️ Активировать'}
+                        </button>
+                      </>
                     )}
                     {ev.campaignStatus === 'pending_payment' && ev.invoiceUrl && (
                       <a href={ev.invoiceUrl} target="_blank" rel="noopener noreferrer" style={{ padding:'7px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(212,168,83,0.12)', border:'1px solid rgba(212,168,83,0.4)', color:warm, textDecoration:'none' }}>
