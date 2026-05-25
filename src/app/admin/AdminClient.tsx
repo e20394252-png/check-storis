@@ -39,26 +39,37 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
     localStorage.setItem('cs-theme', next);
   };
 
+  const [loadError, setLoadError] = useState('');
+
   const load = async () => {
     try {
+      setLoadError('');
       const [eRes, rRes] = await Promise.all([
-        fetch('/api/admin/events'),
-        fetch('/api/admin/registrations'),
+        fetch('/api/admin/events', { credentials: 'include' }),
+        fetch('/api/admin/registrations', { credentials: 'include' }),
       ]);
+
+      if (!eRes.ok || !rRes.ok) {
+        const errMsg = `API error: events=${eRes.status}, regs=${rRes.status}`;
+        console.error('[admin]', errMsg);
+        setLoadError(errMsg);
+      }
+
       const eData = await eRes.json();
       const rData = await rRes.json();
-      if (eData.error) console.error('[admin] events error:', eData.error, eRes.status);
-      if (rData.error) console.error('[admin] regs error:', rData.error, rRes.status);
+      if (eData.error) { console.error('[admin] events error:', eData.error); setLoadError(`Events: ${eData.error}`); }
+      if (rData.error) { console.error('[admin] regs error:', rData.error); setLoadError(prev => prev ? prev + ` | Regs: ${rData.error}` : `Regs: ${rData.error}`); }
       setEvents(eData.events || []);
       setRegs(rData.registrations || []);
       if (organizer.isSuperAdmin) {
-        const oRes = await fetch('/api/admin/organizers');
+        const oRes = await fetch('/api/admin/organizers', { credentials: 'include' });
         const oData = await oRes.json();
         if (oData.error) console.error('[admin] orgs error:', oData.error, oRes.status);
         setOrgs(oData.organizers || []);
       }
     } catch (err) {
       console.error('[admin] load error:', err);
+      setLoadError(`Network error: ${err}`);
     }
   };
   useEffect(() => { load(); }, []);
@@ -162,6 +173,13 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
       </div>
 
       <div style={{ padding:'24px 28px' }}>
+        {/* Error banner */}
+        {loadError && (
+          <div style={{ marginBottom:16, padding:'12px 16px', background:'rgba(199,92,92,0.1)', border:'1px solid rgba(199,92,92,0.3)', borderRadius:10, display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
+            <div style={{ fontSize:13, color:error }}>⚠️ <b>Ошибка загрузки:</b> {loadError}</div>
+            <button onClick={load} style={{ padding:'6px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(199,92,92,0.15)', border:'1px solid rgba(199,92,92,0.3)', color:error, cursor:'pointer', whiteSpace:'nowrap' }}>🔄 Повторить</button>
+          </div>
+        )}
         {/* НА ПРОВЕРКЕ */}
         {tab === 'pending' && (
           <div>
