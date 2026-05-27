@@ -22,8 +22,15 @@ export async function POST(req: NextRequest) {
     }
 
     const { amount } = await req.json();
+    const MIN_WITHDRAW = 1.5; // CryptoBot minimum for USDT transfer
     if (!amount || amount <= 0) {
       return NextResponse.json({ error: 'Invalid amount' }, { status: 400 });
+    }
+    if (amount < MIN_WITHDRAW) {
+      return NextResponse.json({
+        error: `Минимальная сумма вывода — ${MIN_WITHDRAW} USDT. Накопите ещё ${(MIN_WITHDRAW - amount).toFixed(2)} USDT.`,
+        code: 'AMOUNT_TOO_SMALL',
+      }, { status: 400 });
     }
 
     const prisma = getPrisma();
@@ -91,12 +98,24 @@ export async function POST(req: NextRequest) {
         },
       });
 
-      // Check if it's a "user not found" error from CryptoBot
+      // Check for specific CryptoBot errors
       const errMsg = transferErr.message || '';
       if (errMsg.includes('USER_NOT_FOUND') || errMsg.includes('not found')) {
         return NextResponse.json({
           error: 'Для вывода средств необходимо активировать @CryptoBot в Telegram. Нажмите Start в боте @CryptoBot и попробуйте снова.',
           code: 'CRYPTOBOT_NOT_ACTIVATED',
+        }, { status: 400 });
+      }
+      if (errMsg.includes('AMOUNT_TOO_SMALL')) {
+        return NextResponse.json({
+          error: 'Сумма слишком мала для вывода через CryptoBot. Минимум — 1.5 USDT.',
+          code: 'AMOUNT_TOO_SMALL',
+        }, { status: 400 });
+      }
+      if (errMsg.includes('NOT_ENOUGH')) {
+        return NextResponse.json({
+          error: 'Недостаточно средств на кошельке приложения. Обратитесь к администратору @andrewsochy.',
+          code: 'APP_LOW_BALANCE',
         }, { status: 400 });
       }
 

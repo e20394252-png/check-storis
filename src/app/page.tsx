@@ -301,10 +301,15 @@ export default function App() {
         {walletData && walletData.balanceRub > 0 && (
           <div style={{ fontSize:13, color:'var(--text-muted)', marginTop:4 }}>≈ {walletData.balanceRub.toLocaleString()} ₽</div>
         )}
-        <button onClick={handleWithdraw} disabled={withdrawing || !walletData || walletData.balance <= 0}
-          className="warm-btn-primary" style={{ marginTop:16, padding:'12px 32px', fontSize:14, opacity: (!walletData || walletData.balance <= 0) ? 0.5 : 1 }}>
+        <button onClick={handleWithdraw} disabled={withdrawing || !walletData || walletData.balance < 1.5}
+          className="warm-btn-primary" style={{ marginTop:16, padding:'12px 32px', fontSize:14, opacity: (!walletData || walletData.balance < 1.5) ? 0.5 : 1 }}>
           {withdrawing ? 'Выводим...' : '🏧 Вывести на CryptoBot'}
         </button>
+        {walletData && walletData.balance > 0 && walletData.balance < 1.5 && (
+          <div style={{ marginTop:8, fontSize:11, color:'var(--text-muted)' }}>
+            Минимум для вывода — 1.5 USDT. Накопите ещё {(1.5 - walletData.balance).toFixed(2)} USDT
+          </div>
+        )}
         {withdrawMsg && (
           <div style={{ marginTop:12, padding:'10px 14px', borderRadius:8, fontSize:12, background: withdrawMsg.startsWith('✅') ? 'rgba(143,188,106,0.1)' : 'rgba(199,92,92,0.1)', color: withdrawMsg.startsWith('✅') ? 'var(--accent-success)' : 'var(--accent-error)' }}>
             {withdrawMsg}
