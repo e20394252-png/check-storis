@@ -57,12 +57,11 @@ export async function POST(req: NextRequest) {
     });
 
     try {
-      // Execute CryptoBot transfer
+      // Execute CryptoBot transfer (no comment — avoids CANNOT_ATTACH_COMMENT for new users)
       const result = await cryptoBotTransfer(
         user.telegram_id,
         amount,
         withdrawal.id,
-        `Выплата за репосты — check-storis`,
       );
 
       // Update withdrawal and wallet
