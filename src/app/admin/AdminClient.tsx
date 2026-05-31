@@ -23,6 +23,11 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const [pushState, setPushState] = useState<Record<string, { status: string; msg?: string }>>({});
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ msg: string; type: 'ok' | 'err' } | null>(null);
+  const showToast = (msg: string, type: 'ok' | 'err' = 'ok') => {
+    setToast({ msg, type });
+    setTimeout(() => setToast(null), 3000);
+  };
   const [theme, setTheme] = useState<'light'|'dark'>('light');
 
   useEffect(() => {
@@ -82,6 +87,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const review = async (id: string, action: string, note?: string) => {
     setBusy(id);
     await fetch('/api/admin/registrations', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ registrationId:id, action, adminNote: note }) });
+    showToast(action === 'approve' ? '✅ Заявка одобрена' : '❌ Заявка отклонена');
     await load(); setBusy('');
   };
 
@@ -92,7 +98,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
     } else {
       await fetch('/api/admin/events', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(form) });
     }
-    setEditEv(null); setCreating(false); await load(); setBusy('');
+    setEditEv(null); setCreating(false); showToast(editEv ? '✅ Мероприятие обновлено' : '✅ Мероприятие создано'); await load(); setBusy('');
   };
 
   const delEvent = async (id: string) => {
@@ -239,7 +245,12 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
 
           const handleCampaignAction = async (evId: string, action: string) => {
             setBusy(evId);
-            await fetch('/api/admin/events', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: evId, action }) });
+            try {
+              const res = await fetch('/api/admin/events', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: evId, action }) });
+              const data = await res.json();
+              if (data.error) { showToast(`❌ ${data.error}`, 'err'); }
+              else { showToast(action === 'pause' ? '⏸ Кампания приостановлена' : action === 'resume' ? '▶️ Кампания активирована' : '✅ Готово'); }
+            } catch { showToast('❌ Ошибка сети', 'err'); }
             await load(); setBusy('');
           };
 
@@ -290,8 +301,10 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                   </button>
                   {organizer.isSuperAdmin && (
                     <button onClick={async () => {
+                      setBusy(ev.id + '_star');
                       await fetch('/api/admin/events', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ eventId: ev.id, isFeatured: !ev.isFeatured }) });
-                      load();
+                      showToast(ev.isFeatured ? '☆ Убрано из главных' : '⭐ Добавлено в главные');
+                      await load(); setBusy('');
                     }} style={{ padding:'8px 12px', fontSize:12, fontWeight:700, borderRadius:8, background: ev.isFeatured ? 'rgba(212,168,83,0.2)' : 'var(--border-subtle)', border:`1px solid ${ev.isFeatured ? 'rgba(212,168,83,0.5)' : 'rgba(200,168,110,0.25)'}`, color: ev.isFeatured ? warm : muted, cursor:'pointer', transition:'all 0.2s' }} title={ev.isFeatured ? 'Убрать из главных' : 'Сделать главной'}>
                       {ev.isFeatured ? '⭐' : '☆'}
                     </button>
@@ -428,6 +441,21 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
         {/* CRYPTOBOT (суперадмин) */}
         {tab === 'cryptobot' && organizer.isSuperAdmin && <CryptoBotPanel />}
       </div>
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position:'fixed', bottom:24, right:24, zIndex:9999,
+          padding:'14px 22px', borderRadius:12,
+          background: toast.type === 'ok' ? 'rgba(143,188,106,0.95)' : 'rgba(199,92,92,0.95)',
+          color:'#fff', fontSize:14, fontWeight:700,
+          boxShadow:'0 8px 32px rgba(0,0,0,0.25)',
+          animation: 'toast-slide-in 0.3s ease',
+          cursor:'pointer',
+        }} onClick={() => setToast(null)}>
+          {toast.msg}
+        </div>
+      )}
+      <style>{`@keyframes toast-slide-in { from { transform:translateY(20px);opacity:0 } to { transform:translateY(0);opacity:1 } }`}</style>
     </div>
   );
 }
