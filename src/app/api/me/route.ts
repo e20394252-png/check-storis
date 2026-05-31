@@ -24,13 +24,37 @@ export async function GET(req: NextRequest) {
       orderBy: { createdAt: 'desc' },
     });
 
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { telegram_id: BigInt(tgUser.id) },
       include: {
         registrations: true,
         wallet: true,
+        _count: { select: { referrals: true } },
       },
     });
+
+    // Generate referral code if missing
+    if (user && !user.referralCode) {
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      // Ensure unique
+      while (await prisma.user.findFirst({ where: { referralCode: code } })) {
+        code = '';
+        for (let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+      }
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: { referralCode: code },
+        include: { registrations: true, wallet: true, _count: { select: { referrals: true } } },
+      });
+    }
+
+    // Get referral earnings total
+    const referralEarnings = user ? await prisma.referralEarning.aggregate({
+      where: { referrerId: user.id },
+      _sum: { amount: true },
+    }) : null;
 
     const registrationMap: Record<string, { status: string; createdAt: Date; adminNote?: string | null; paidAmount?: number | null }> = {};
     if (user?.registrations) {
@@ -54,6 +78,11 @@ export async function GET(req: NextRequest) {
         totalEarned: user.wallet.totalEarned,
         totalPaid: user.wallet.totalPaid,
       } : null,
+      referral: {
+        code: user?.referralCode || null,
+        count: (user as any)?._count?.referrals || 0,
+        earnings: referralEarnings?._sum?.amount || 0,
+      },
       events: events
         .filter(ev => {
           // For paid reposts: only show if campaign is active

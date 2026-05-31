@@ -13,7 +13,9 @@ export async function POST(req: NextRequest) {
     const callbackData = body?.callback_query?.data || '';
     const isOurUpdate =
       text.includes('/start login_') ||
-      callbackData.startsWith('reg:');
+      text.includes('/start ref_') ||
+      callbackData.startsWith('reg:') ||
+      callbackData.startsWith('paid_reg:');
 
     if (isOurUpdate) {
       // Обрабатываем сами — авторизация или approve/reject

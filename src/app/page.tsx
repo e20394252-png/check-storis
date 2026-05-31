@@ -26,6 +26,7 @@ interface WalletData {
 interface MeData {
   user: { first_name?: string|null; username?: string|null };
   wallet?: { balance: number; totalEarned: number; totalPaid: number } | null;
+  referral?: { code: string|null; count: number; earnings: number };
   events: EventItem[];
 }
 
@@ -330,6 +331,51 @@ export default function App() {
           <div style={{ fontSize:10, color:'var(--text-muted)' }}>USDT</div>
         </div>
       </div>
+
+      {/* Referral block */}
+      {meData?.referral?.code && (
+        <div style={{ background:'linear-gradient(135deg, rgba(100,140,200,0.10), rgba(140,180,220,0.06))', border:'1px solid rgba(100,140,200,0.25)', borderRadius:16, padding:'20px 24px', marginBottom:20 }}>
+          <div style={{ fontSize:14, fontWeight:700, color:'var(--accent-cream)', marginBottom:10 }}>👥 Рефералы</div>
+          <div style={{ fontSize:12, color:'var(--text-muted)', lineHeight:1.6, marginBottom:14 }}>
+            Пригласи друзей — получай <b style={{ color:'var(--accent-gold)' }}>10%</b> от их заработка на репостах навсегда!
+            <br/>+ <b style={{ color:'var(--accent-success)' }}>0.1 USDT</b> бонус за первый репост друга
+          </div>
+          <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:'10px 14px', fontSize:12, color:'var(--accent-cream)', marginBottom:12, wordBreak:'break-all', fontFamily:'monospace' }}>
+            t.me/check_storis_bot?start=ref_{meData.referral.code}
+          </div>
+          <div style={{ display:'flex', gap:8 }}>
+            <button onClick={() => {
+              navigator.clipboard.writeText(`https://t.me/check_storis_bot?start=ref_${meData.referral!.code}`);
+              const btn = document.getElementById('ref-copy-btn');
+              if (btn) { btn.textContent = '✅ Скопировано!'; setTimeout(() => btn.textContent = '📋 Копировать', 2000); }
+            }} id="ref-copy-btn" className="warm-btn-primary" style={{ flex:1, padding:'10px', fontSize:13 }}>
+              📋 Копировать
+            </button>
+            <button onClick={() => {
+              const text = `Зарабатывай на репостах сторис! 💰\n\nПереходи по ссылке и начни зарабатывать:\nhttps://t.me/check_storis_bot?start=ref_${meData.referral!.code}`;
+              const tg = window.Telegram?.WebApp;
+              if (tg?.switchInlineQuery) {
+                tg.switchInlineQuery(text, ['users']);
+              } else {
+                const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(`https://t.me/check_storis_bot?start=ref_${meData.referral!.code}`)}&text=${encodeURIComponent('Зарабатывай на репостах сторис! 💰')}`;
+                window.open(shareUrl, '_blank');
+              }
+            }} style={{ flex:1, padding:'10px', fontSize:13, fontWeight:600, background:'transparent', border:'1px solid var(--border-subtle)', borderRadius:10, color:'var(--text-muted)', cursor:'pointer' }}>
+              📤 Поделиться
+            </button>
+          </div>
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginTop:14 }}>
+            <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:'10px 14px', textAlign:'center' }}>
+              <div style={{ fontSize:20, fontWeight:800, color:'var(--accent-cream)' }}>{meData.referral.count}</div>
+              <div style={{ fontSize:10, color:'var(--text-muted)' }}>Друзей</div>
+            </div>
+            <div style={{ background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:10, padding:'10px 14px', textAlign:'center' }}>
+              <div style={{ fontSize:20, fontWeight:800, color:'var(--accent-success)' }}>{meData.referral.earnings.toFixed(2)}</div>
+              <div style={{ fontSize:10, color:'var(--text-muted)' }}>USDT заработано</div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* History */}
       <div style={{ fontSize:14, fontWeight:700, color:'var(--accent-cream)', marginBottom:12 }}>📋 История операций</div>

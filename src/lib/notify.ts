@@ -382,3 +382,46 @@ export async function notifyOrgCampaignCompleted(
     `Вы можете докупить ещё сторис в панели управления.`
   );
 }
+
+// ── Referral notifications ──
+
+/** Notify referrer when a new user joins via their link */
+export async function notifyNewReferral(
+  referrerTelegramId: bigint,
+  referralName: string,
+) {
+  await sendMessage(referrerTelegramId,
+    `👥 <b>Новый реферал!</b>\n\n` +
+    `${escapeHtml(referralName)} перешёл по вашей ссылке 🎉\n\n` +
+    `Вы будете получать <b>10%</b> от каждого его заработка на репостах!`,
+    {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '📱 Открыть приложение', web_app: { url: APP_URL } },
+        ]],
+      },
+    }
+  );
+}
+
+/** Notify referrer when they earned a referral bonus */
+export async function notifyReferrerBonus(
+  referrerTelegramId: bigint,
+  amount: number,
+  referralName: string,
+  isFirstRepost: boolean,
+) {
+  const firstBonusText = isFirstRepost ? `\n🎁 Включая бонус 0.10 USDT за первый репост друга!` : '';
+  await sendMessage(referrerTelegramId,
+    `💰 <b>Реферальный бонус!</b>\n\n` +
+    `+${amount.toFixed(2)} USDT от реферала ${escapeHtml(referralName)}${firstBonusText}\n\n` +
+    `Сумма зачислена на ваш баланс 💎`,
+    {
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '📱 Проверить баланс', web_app: { url: APP_URL } },
+        ]],
+      },
+    }
+  );
+}
