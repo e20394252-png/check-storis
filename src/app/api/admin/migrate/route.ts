@@ -221,6 +221,38 @@ export async function POST(req: NextRequest) {
       );
     `);
 
+    // ════════════════════════════════════════════════════════════
+    // Реферальная система
+    // ════════════════════════════════════════════════════════════
+
+    await run('User.referralCode', `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "referralCode" TEXT;`);
+    await run('User.referralCode unique', `
+      DO $$ BEGIN
+        ALTER TABLE "User" ADD CONSTRAINT "User_referralCode_key" UNIQUE ("referralCode");
+      EXCEPTION WHEN duplicate_table THEN NULL; WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+    await run('User.referredById', `ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "referredById" TEXT;`);
+    await run('User FK referredBy', `
+      DO $$ BEGIN
+        ALTER TABLE "User" ADD CONSTRAINT fk_user_referrer FOREIGN KEY ("referredById") REFERENCES "User"(id);
+      EXCEPTION WHEN duplicate_object THEN NULL;
+      END $$;
+    `);
+
+    // ReferralEarning table
+    await run('Table ReferralEarning', `
+      CREATE TABLE IF NOT EXISTS "ReferralEarning" (
+        id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+        "referrerId" TEXT NOT NULL,
+        "referralId" TEXT NOT NULL,
+        "registrationId" TEXT NOT NULL,
+        amount DOUBLE PRECISION NOT NULL,
+        type TEXT NOT NULL,
+        "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+    `);
+
     const tables = await prisma.$queryRawUnsafe<{ tablename: string }[]>(
       `SELECT tablename FROM pg_tables WHERE schemaname = 'public' ORDER BY tablename;`
     );
