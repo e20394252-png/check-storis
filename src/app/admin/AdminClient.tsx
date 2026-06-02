@@ -5,6 +5,9 @@ type Org = { id: string; first_name?: string|null; username?: string|null; statu
 type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; isFeatured?: boolean; isPaidRepost?: boolean; repostRewardUsdt?: number|null; repostsNeeded?: number|null; repostsFilled?: number; campaignBudget?: number|null; campaignTotal?: number|null; campaignStatus?: string|null; invoiceUrl?: string|null; _count?: { registrations: number } };
 type Reg = { id: string; status: string; proofUrl?: string|null; storyUrl?: string|null; adminNote?: string|null; paidAmount?: number|null; createdAt: string; updatedAt: string; user: { first_name?: string|null; username?: string|null }; event: { id?: string; title?: string|null; isPaidRepost?: boolean; repostRewardUsdt?: number|null } };
 type OrgItem = { id: string; telegram_id: string; first_name?: string|null; username?: string|null; login?: string|null; photo_url?: string|null; status: string; isSuperAdmin: boolean; createdAt: string; _count?: { events: number } };
+type RefUser = { id: string; telegram_id: string; username?: string|null; first_name?: string|null; referralCode?: string|null; referredById?: string|null; referredByName?: string|null; createdAt: string; referralsCount: number; referrals: { id: string; telegram_id: string; username?: string|null; first_name?: string|null; createdAt: string }[]; walletBalance: number; walletTotalEarned: number };
+type RefEarning = { id: string; referrerId: string; referrerName: string; referralId: string; referralName: string; amount: number; type: string; createdAt: string };
+type RefStats = { totalReferrers: number; totalReferralPairs: number; totalEarnings: number; totalEarningsCount: number };
 
 const gold = 'var(--accent-gold)'; const warm = 'var(--accent-warm)'; const cream = 'var(--accent-cream)';
 const success = 'var(--accent-success)'; const error = 'var(--accent-error)'; const muted = 'var(--text-muted)';
@@ -17,6 +20,9 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const [events, setEvents] = useState<Ev[]>([]);
   const [regs, setRegs] = useState<Reg[]>([]);
   const [orgs, setOrgs] = useState<OrgItem[]>([]);
+  const [refUsers, setRefUsers] = useState<RefUser[]>([]);
+  const [refEarnings, setRefEarnings] = useState<RefEarning[]>([]);
+  const [refStats, setRefStats] = useState<RefStats>({ totalReferrers:0, totalReferralPairs:0, totalEarnings:0, totalEarningsCount:0 });
   const [editEv, setEditEv] = useState<Ev|null>(null);
   const [creating, setCreating] = useState(false);
   const [busy, setBusy] = useState('');
@@ -67,10 +73,19 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
       setEvents(eData.events || []);
       setRegs(rData.registrations || []);
       if (organizer.isSuperAdmin) {
-        const oRes = await fetch('/api/admin/organizers', { credentials: 'include' });
+        const [oRes, refRes] = await Promise.all([
+          fetch('/api/admin/organizers', { credentials: 'include' }),
+          fetch('/api/admin/referrals', { credentials: 'include' }),
+        ]);
         const oData = await oRes.json();
         if (oData.error) console.error('[admin] orgs error:', oData.error, oRes.status);
         setOrgs(oData.organizers || []);
+        const refData = await refRes.json();
+        if (!refData.error) {
+          setRefUsers(refData.users || []);
+          setRefEarnings(refData.earnings || []);
+          setRefStats(refData.stats || { totalReferrers:0, totalReferralPairs:0, totalEarnings:0, totalEarningsCount:0 });
+        }
       }
     } catch (err) {
       console.error('[admin] load error:', err);
@@ -175,6 +190,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
         <TabBtn id="events" label="📅 Мероприятия" count={events.length} />
         <TabBtn id="guide" label="💡 Инструкция" />
         {organizer.isSuperAdmin && <TabBtn id="organizers" label="👥 Организаторы" count={pendingOrgs.length} />}
+        {organizer.isSuperAdmin && <TabBtn id="referrals" label="🔗 Рефералы" />}
         {organizer.isSuperAdmin && <TabBtn id="cryptobot" label="💳 CryptoBot" />}
       </div>
 
@@ -437,6 +453,9 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
 
         {/* ИНСТРУКЦИЯ */}
         {tab === 'guide' && <WalletGuide />}
+
+        {/* РЕФЕРАЛЫ (суперадмин) */}
+        {tab === 'referrals' && organizer.isSuperAdmin && <ReferralsPanel users={refUsers} earnings={refEarnings} stats={refStats} />}
 
         {/* CRYPTOBOT (суперадмин) */}
         {tab === 'cryptobot' && organizer.isSuperAdmin && <CryptoBotPanel />}
@@ -1206,6 +1225,197 @@ function WalletGuide() {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// Панель рефералов
+function ReferralsPanel({ users, earnings, stats }: { users: RefUser[]; earnings: RefEarning[]; stats: RefStats }) {
+  const [view, setView] = useState<'tree'|'log'>('tree');
+  const [expandedId, setExpandedId] = useState<string|null>(null);
+  const [search, setSearch] = useState('');
+
+  // Only referrers (users who have invited someone)
+  const referrers = users.filter(u => u.referralsCount > 0);
+  // Filter
+  const filtered = referrers.filter(u => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (u.first_name?.toLowerCase().includes(q)) ||
+           (u.username?.toLowerCase().includes(q)) ||
+           (u.referralCode?.toLowerCase().includes(q)) ||
+           (u.telegram_id.includes(q));
+  });
+
+  // Earnings by referrer
+  const earningsByReferrer = new Map<string, number>();
+  for (const e of earnings) {
+    earningsByReferrer.set(e.referrerId, (earningsByReferrer.get(e.referrerId) || 0) + e.amount);
+  }
+
+  const statCard = (icon: string, label: string, value: string | number, color: string) => (
+    <div style={{ background: card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:'20px 24px', flex:'1 1 180px', minWidth:160 }}>
+      <div style={{ fontSize:28, marginBottom:6 }}>{icon}</div>
+      <div style={{ fontSize:24, fontWeight:800, fontFamily:'monospace', color, marginBottom:4 }}>{value}</div>
+      <div style={{ fontSize:11, color:muted }}>{label}</div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ fontSize:12, color:muted, marginBottom:20 }}>🔗 Реферальная система</div>
+
+      {/* Stats */}
+      <div style={{ display:'flex', gap:14, flexWrap:'wrap', marginBottom:24 }}>
+        {statCard('👥', 'Рефереров', stats.totalReferrers, gold)}
+        {statCard('🤝', 'Приглашённых', stats.totalReferralPairs, warm)}
+        {statCard('💰', 'Начислено (USDT)', stats.totalEarnings.toFixed(2), success)}
+        {statCard('📊', 'Начислений', stats.totalEarningsCount, cream)}
+      </div>
+
+      {/* View toggle + search */}
+      <div style={{ display:'flex', gap:10, marginBottom:18, alignItems:'center', flexWrap:'wrap' }}>
+        <button onClick={() => setView('tree')} style={{ padding:'8px 16px', fontSize:12, fontWeight:600, borderRadius:8, background: view==='tree' ? 'var(--bg-card)' : 'transparent', border: view==='tree' ? '1px solid var(--border-glow)' : '1px solid var(--border-subtle)', color: view==='tree' ? gold : muted, cursor:'pointer', transition:'all 0.25s' }}>🌳 Дерево</button>
+        <button onClick={() => setView('log')} style={{ padding:'8px 16px', fontSize:12, fontWeight:600, borderRadius:8, background: view==='log' ? 'var(--bg-card)' : 'transparent', border: view==='log' ? '1px solid var(--border-glow)' : '1px solid var(--border-subtle)', color: view==='log' ? gold : muted, cursor:'pointer', transition:'all 0.25s' }}>📋 Начисления</button>
+        {view === 'tree' && (
+          <input
+            value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Поиск по имени, @username, коду..."
+            style={{ ...inp, maxWidth:300, marginLeft:'auto' }}
+          />
+        )}
+      </div>
+
+      {/* TREE VIEW */}
+      {view === 'tree' && (
+        <div>
+          {filtered.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'60px 0', color:muted }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>🔗</div>
+              <div style={{ fontSize:16, fontWeight:600 }}>{search ? 'Ничего не найдено' : 'Нет рефералов'}</div>
+            </div>
+          ) : filtered.map(u => {
+            const isExpanded = expandedId === u.id;
+            const refEarned = earningsByReferrer.get(u.id) || 0;
+            return (
+              <div key={u.id} style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:12, marginBottom:12, overflow:'hidden', transition:'all 0.2s' }}>
+                {/* Referrer header */}
+                <div
+                  onClick={() => setExpandedId(isExpanded ? null : u.id)}
+                  style={{ padding:'16px 20px', cursor:'pointer', display:'flex', justifyContent:'space-between', alignItems:'center', gap:12, flexWrap:'wrap' }}
+                >
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:4, flexWrap:'wrap' }}>
+                      <span style={{ fontWeight:700, fontSize:15 }}>{u.first_name || '—'}</span>
+                      {u.username && <span style={{ color:muted, fontSize:13 }}>@{u.username}</span>}
+                      {u.referralCode && <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background:'rgba(200,168,110,0.1)', color:gold, fontFamily:'monospace' }}>{u.referralCode}</span>}
+                    </div>
+                    <div style={{ fontSize:12, color:muted }}>
+                      👥 <span style={{ color: cream }}>{u.referralsCount}</span> приглашённых
+                      {refEarned > 0 && <> · 💰 <span style={{ color:success }}>{refEarned.toFixed(2)} USDT</span> заработано</>}
+                      {' · '}ID: {u.telegram_id}
+                    </div>
+                  </div>
+                  <div style={{ display:'flex', alignItems:'center', gap:12 }}>
+                    {u.walletTotalEarned > 0 && (
+                      <div style={{ textAlign:'right' }}>
+                        <div style={{ fontSize:16, fontWeight:800, fontFamily:'monospace', color:success }}>{u.walletTotalEarned.toFixed(2)}</div>
+                        <div style={{ fontSize:10, color:muted }}>USDT всего</div>
+                      </div>
+                    )}
+                    <span style={{ transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.25s ease', fontSize:16, lineHeight:1, color:muted }}>▼</span>
+                  </div>
+                </div>
+
+                {/* Expanded referrals list */}
+                {isExpanded && (
+                  <div style={{ borderTop:'1px solid var(--border-subtle)', padding:'12px 20px' }}>
+                    <div style={{ fontSize:10, color:muted, marginBottom:10, textTransform:'uppercase', letterSpacing:'0.05em' }}>Приглашённые пользователи</div>
+                    {u.referrals.length === 0 ? (
+                      <div style={{ fontSize:13, color:muted, padding:'8px 0' }}>Нет рефералов</div>
+                    ) : (
+                      <div style={{ display:'grid', gap:8 }}>
+                        {u.referrals.map(r => (
+                          <div key={r.id} style={{ display:'flex', alignItems:'center', gap:12, padding:'10px 14px', background:'var(--bg-card-hover)', borderRadius:8, border:'1px solid var(--border-subtle)' }}>
+                            <div style={{ width:32, height:32, borderRadius:'50%', background:'linear-gradient(135deg, rgba(200,168,110,0.2), rgba(212,168,83,0.1))', display:'flex', alignItems:'center', justifyContent:'center', fontSize:14 }}>👤</div>
+                            <div style={{ flex:1 }}>
+                              <div style={{ fontSize:13, fontWeight:600 }}>{r.first_name || '—'} {r.username && <span style={{ color:muted, fontWeight:400 }}>@{r.username}</span>}</div>
+                              <div style={{ fontSize:11, color:muted }}>ID: {r.telegram_id} · {new Date(r.createdAt).toLocaleDateString('ru-RU', { day:'2-digit', month:'short', year:'numeric' })}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Earnings for this referrer */}
+                    {(() => {
+                      const refEarningsList = earnings.filter(e => e.referrerId === u.id);
+                      if (refEarningsList.length === 0) return null;
+                      return (
+                        <div style={{ marginTop:14 }}>
+                          <div style={{ fontSize:10, color:muted, marginBottom:8, textTransform:'uppercase', letterSpacing:'0.05em' }}>История начислений</div>
+                          <div style={{ overflowX:'auto', borderRadius:8, border:'1px solid var(--border-subtle)' }}>
+                            <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                              <thead><tr style={{ background:'rgba(200,168,110,0.03)', borderBottom:'1px solid var(--border-subtle)' }}>
+                                {['Тип','За кого','Сумма','Дата'].map(h => <th key={h} style={{ padding:'8px 12px', textAlign:'left', fontSize:10, fontWeight:600, color:muted, textTransform:'uppercase' }}>{h}</th>)}
+                              </tr></thead>
+                              <tbody>
+                                {refEarningsList.map(e => (
+                                  <tr key={e.id}>
+                                    <td style={{ padding:'8px 12px', borderBottom:'1px solid var(--border-subtle)', fontSize:12 }}>
+                                      <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background: e.type === 'commission' ? 'rgba(143,188,106,0.12)' : 'rgba(212,168,83,0.12)', color: e.type === 'commission' ? success : warm }}>{e.type === 'commission' ? '💰 Комиссия' : '🎁 Первый репост'}</span>
+                                    </td>
+                                    <td style={{ padding:'8px 12px', borderBottom:'1px solid var(--border-subtle)', fontSize:12, color:cream }}>{e.referralName}</td>
+                                    <td style={{ padding:'8px 12px', borderBottom:'1px solid var(--border-subtle)', fontSize:13, fontWeight:700, fontFamily:'monospace', color:success }}>+{e.amount.toFixed(2)}</td>
+                                    <td style={{ padding:'8px 12px', borderBottom:'1px solid var(--border-subtle)', fontSize:11, color:muted }}>{new Date(e.createdAt).toLocaleString('ru-RU', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      );
+                    })()}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* LOG VIEW */}
+      {view === 'log' && (
+        <div>
+          {earnings.length === 0 ? (
+            <div style={{ textAlign:'center', padding:'60px 0', color:muted }}>
+              <div style={{ fontSize:48, marginBottom:12 }}>💰</div>
+              <div style={{ fontSize:16, fontWeight:600 }}>Нет начислений</div>
+            </div>
+          ) : (
+            <div style={{ overflowX:'auto', borderRadius:12, border:'1px solid var(--border-subtle)' }}>
+              <table style={{ width:'100%', borderCollapse:'collapse' }}>
+                <thead><tr style={{ background:'rgba(200,168,110,0.03)', borderBottom:'1px solid var(--border-subtle)' }}>
+                  {['Тип','Реферер','Реферал','Сумма (USDT)','Дата'].map(h => <th key={h} style={{ padding:'11px 16px', textAlign:'left', fontSize:11, fontWeight:600, color:muted, textTransform:'uppercase' }}>{h}</th>)}
+                </tr></thead>
+                <tbody>
+                  {earnings.map(e => (
+                    <tr key={e.id}>
+                      <td style={{ padding:'11px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:12 }}>
+                        <span style={{ fontSize:10, fontWeight:700, padding:'2px 8px', borderRadius:4, background: e.type === 'commission' ? 'rgba(143,188,106,0.12)' : 'rgba(212,168,83,0.12)', color: e.type === 'commission' ? success : warm }}>{e.type === 'commission' ? '💰 Комиссия' : '🎁 Первый репост'}</span>
+                      </td>
+                      <td style={{ padding:'11px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:13, fontWeight:600, color:gold }}>{e.referrerName}</td>
+                      <td style={{ padding:'11px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:13, color:cream }}>{e.referralName}</td>
+                      <td style={{ padding:'11px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:14, fontWeight:700, fontFamily:'monospace', color:success }}>+{e.amount.toFixed(2)}</td>
+                      <td style={{ padding:'11px 16px', borderBottom:'1px solid var(--border-subtle)', fontSize:11, color:muted }}>{new Date(e.createdAt).toLocaleString('ru-RU')}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
