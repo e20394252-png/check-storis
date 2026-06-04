@@ -334,11 +334,13 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
                 <div style={{ marginTop:12, padding:'12px 16px', background:'rgba(212,168,83,0.05)', border:'1px solid rgba(212,168,83,0.15)', borderRadius:10 }}>
                   <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:8, flexWrap:'wrap', gap:8 }}>
                     <div style={{ fontSize:12, color:warm }}>
-                      💰 {ev.repostRewardUsdt} USDT за репост · {ev.repostsFilled || 0}/{ev.repostsNeeded || 0} репостов
+                      💰 {ev.repostRewardUsdt ? `${ev.repostRewardUsdt} USDT за репост` : 'Награда не задана'} · {ev.repostsFilled || 0}/{ev.repostsNeeded || '—'} репостов
                     </div>
-                    <div style={{ fontSize:11, color:muted }}>
-                      Бюджет: {ev.campaignBudget} USDT · Итого: {ev.campaignTotal} USDT
-                    </div>
+                    {(ev.campaignBudget || ev.campaignTotal) && (
+                      <div style={{ fontSize:11, color:muted }}>
+                        {ev.campaignBudget ? `Бюджет: ${ev.campaignBudget} USDT` : ''}{ev.campaignBudget && ev.campaignTotal ? ' · ' : ''}{ev.campaignTotal ? `Итого: ${ev.campaignTotal} USDT` : ''}
+                      </div>
+                    )}
                   </div>
                   {/* Progress bar */}
                   {ev.repostsNeeded && ev.repostsNeeded > 0 && (

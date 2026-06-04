@@ -472,13 +472,21 @@ export default function App() {
             {ev.imageUrl && <img src={ev.imageUrl} alt="" className="event-image" />}
 
             {/* Paid repost badge */}
-            {ev.isPaidRepost && (
+            {ev.isPaidRepost && ev.repostRewardUsdt && ev.repostRewardUsdt > 0 && (
               <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, padding:'8px 12px', background:'linear-gradient(135deg, rgba(212,168,83,0.1), rgba(143,188,106,0.06))', border:'1px solid rgba(212,168,83,0.25)', borderRadius:10 }}>
                 <span style={{ fontSize:16 }}>💰</span>
                 <div>
                   <div style={{ fontSize:13, fontWeight:700, color:'var(--accent-warm)' }}>{ev.repostRewardUsdt} USDT за репост</div>
-                  <div style={{ fontSize:11, color:'var(--text-muted)' }}>Осталось: {(ev.repostsNeeded || 0) - (ev.repostsFilled || 0)} из {ev.repostsNeeded}</div>
+                  {ev.repostsNeeded && ev.repostsNeeded > 0 && (
+                    <div style={{ fontSize:11, color:'var(--text-muted)' }}>Осталось: {Math.max(0, (ev.repostsNeeded || 0) - (ev.repostsFilled || 0))} из {ev.repostsNeeded}</div>
+                  )}
                 </div>
+              </div>
+            )}
+            {ev.isPaidRepost && (!ev.repostRewardUsdt || ev.repostRewardUsdt <= 0) && (
+              <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10, padding:'8px 12px', background:'rgba(200,168,110,0.06)', border:'1px solid var(--border-subtle)', borderRadius:10 }}>
+                <span style={{ fontSize:16 }}>📸</span>
+                <div style={{ fontSize:13, fontWeight:600, color:'var(--text-muted)' }}>Бесплатный репост</div>
               </div>
             )}
 

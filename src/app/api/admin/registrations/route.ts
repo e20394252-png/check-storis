@@ -127,6 +127,58 @@ export async function PATCH(req: NextRequest) {
       notifyUserPaidRepostApproved(telegramId, rewardAmount, reg.event.title).catch(console.error);
     }
 
+    // 5. Referral bonus
+    try {
+      const user = await prisma.user.findUnique({
+        where: { id: reg.userId },
+        select: { id: true, referredById: true, username: true, first_name: true },
+      });
+      if (user?.referredById) {
+        const referrer = await prisma.user.findUnique({
+          where: { id: user.referredById },
+          select: { id: true, telegram_id: true },
+        });
+        if (referrer) {
+          const REFERRAL_PERCENT = 0.10;
+          const FIRST_REPOST_BONUS = 0.10;
+          const commissionBonus = Math.round(rewardAmount * REFERRAL_PERCENT * 100) / 100;
+          let totalBonus = commissionBonus;
+
+          const approvedCount = await prisma.registration.count({
+            where: { userId: user.id, status: 'APPROVED', paidAmount: { gt: 0 } },
+          });
+          const isFirstRepost = approvedCount <= 1;
+
+          await prisma.referralEarning.create({
+            data: { referrerId: referrer.id, referralId: user.id, registrationId, amount: commissionBonus, type: 'commission' },
+          });
+
+          if (isFirstRepost) {
+            totalBonus += FIRST_REPOST_BONUS;
+            await prisma.referralEarning.create({
+              data: { referrerId: referrer.id, referralId: user.id, registrationId, amount: FIRST_REPOST_BONUS, type: 'first_repost' },
+            });
+          }
+
+          await prisma.userWallet.upsert({
+            where: { userId: referrer.id },
+            create: { userId: referrer.id, balance: totalBonus, totalEarned: totalBonus },
+            update: { balance: { increment: totalBonus }, totalEarned: { increment: totalBonus } },
+          });
+
+          const { notifyReferrerBonus } = await import('@/lib/notify');
+          notifyReferrerBonus(
+            referrer.telegram_id,
+            totalBonus,
+            user.username || user.first_name || 'Юзер',
+            isFirstRepost,
+          ).catch(console.error);
+        }
+      }
+    } catch (refErr) {
+      console.error('[referral] bonus error:', refErr);
+    }
+
     return NextResponse.json({ success: true, status: newStatus, paidAmount: rewardAmount });
   }
 
