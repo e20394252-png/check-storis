@@ -6,6 +6,19 @@
 
 ## Сейчас: Northflank (временно)
 
+### Если сервиса ещё нет (только make-doc и т.п.)
+
+На машине с **Northflank API token** (Team → API → Create, право **Project → Services → Create**):
+
+```powershell
+$env:NORTHFLANK_API_TOKEN = "<токен>"
+node scripts/northflank-bootstrap.mjs
+```
+
+Скрипт создаёт combined-сервис **`check-storis`** в проекте **`default`** команды **`kassandrs-team`**, репозиторий GitHub, ветка `main`, Dockerfile, порт **3000**, health `GET /api/health`. Секреты приложения в скрипт **не** кладутся — задайте их в панели Northflank после создания.
+
+---
+
 | Параметр | Значение |
 |----------|----------|
 | Платформа | [Northflank](https://northflank.com) |
