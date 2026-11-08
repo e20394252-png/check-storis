@@ -3,12 +3,9 @@
  * Sends messages to users via Bot API using simple fetch
  */
 
+import { getAdminUrl, getAppUrl } from '@/lib/app-url';
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const APP_URL =
-  process.env.NEXT_PUBLIC_MINI_APP_URL ||
-  (process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : 'https://check-storis-production-673a.up.railway.app');
 
 async function sendMessage(chatId: string | number | bigint, text: string, extra?: object): Promise<boolean> {
   if (!BOT_TOKEN) {
@@ -89,13 +86,13 @@ async function sendPhoto(
 
 const openAppButton = {
   reply_markup: JSON.stringify({
-    inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: APP_URL } }]],
+    inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: getAppUrl() } }]],
   }),
 };
 
 const tryAgainButton = {
   reply_markup: JSON.stringify({
-    inline_keyboard: [[{ text: '📸 Попробовать снова', web_app: { url: APP_URL } }]],
+    inline_keyboard: [[{ text: '📸 Попробовать снова', web_app: { url: getAppUrl() } }]],
   }),
 };
 
@@ -153,7 +150,7 @@ export async function notifyAdminNewRegistration(
   const caption =
     `🔔 <b>Новая заявка на проверку!</b>\n\n` +
     `👤 ${escapeHtml(userName)}${username ? ` (@${escapeHtml(username)})` : ''}\n\n` +
-    `<a href="${APP_URL}/admin?key=${process.env.ADMIN_SECRET}">Открыть панель модератора →</a>`;
+    `<a href="${getAdminUrl()}">Открыть панель модератора →</a>`;
 
   const replyMarkup = JSON.stringify({
     inline_keyboard: [[
@@ -202,7 +199,7 @@ export async function broadcastEventPush(
     `\nНажми кнопку ниже чтобы зарегистрироваться!`;
 
   const replyMarkup = JSON.stringify({
-    inline_keyboard: [[{ text: '📱 Зарегистрироваться', web_app: { url: APP_URL } }]],
+    inline_keyboard: [[{ text: '📱 Зарегистрироваться', web_app: { url: getAppUrl() } }]],
   });
 
   let sent = 0;
@@ -239,7 +236,7 @@ export async function notifySuperAdminNewOrganizer(organizerId: string, name: st
   const ids = getSuperAdminIds();
   if (ids.length === 0) return;
 
-  const adminUrl = APP_URL + '/admin';
+  const adminUrl = getAdminUrl();
   const text =
     `👤 <b>Новый организатор!</b>\n\n` +
     `Имя: <b>${escapeHtml(name)}</b>\n` +
@@ -254,7 +251,7 @@ export async function notifySuperAdminNewEvent(eventId: string, title: string, o
   const ids = getSuperAdminIds();
   if (ids.length === 0) return;
 
-  const adminUrl = APP_URL + '/admin';
+  const adminUrl = getAdminUrl();
   const text =
     `📋 <b>Новое мероприятие на проверку!</b>\n\n` +
     `📌 <b>${escapeHtml(title)}</b>\n` +
@@ -274,7 +271,7 @@ export async function notifyOrgNewSubmission(
   username?: string | null,
   eventTitle?: string,
 ) {
-  const adminUrl = APP_URL + '/admin';
+  const adminUrl = getAdminUrl();
   const text =
     `📸 <b>Новая заявка!</b>\n\n` +
     `📅 ${escapeHtml(eventTitle || 'Мероприятие')}\n` +
@@ -397,7 +394,7 @@ export async function notifyNewReferral(
     {
       reply_markup: {
         inline_keyboard: [[
-          { text: '📱 Открыть приложение', web_app: { url: APP_URL } },
+          { text: '📱 Открыть приложение', web_app: { url: getAppUrl() } },
         ]],
       },
     }
@@ -419,7 +416,7 @@ export async function notifyReferrerBonus(
     {
       reply_markup: {
         inline_keyboard: [[
-          { text: '📱 Проверить баланс', web_app: { url: APP_URL } },
+          { text: '📱 Проверить баланс', web_app: { url: getAppUrl() } },
         ]],
       },
     }

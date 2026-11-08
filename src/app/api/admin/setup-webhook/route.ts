@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   }
 
   // По умолчанию — установить наш вебхук
-  const appUrl = process.env.NEXT_PUBLIC_MINI_APP_URL || `https://${req.headers.get('host')}`;
+  const appUrl = getAppUrl(req.headers.get('host'));
   const webhookUrl = `${appUrl}/api/webhook/telegram`;
 
   const res = await fetch(

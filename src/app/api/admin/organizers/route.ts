@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { getSession } from '@/lib/admin-session';
+import { getAdminUrl } from '@/lib/app-url';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -50,9 +51,7 @@ export async function PATCH(req: NextRequest) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (botToken && updated.telegram_id && updated.telegram_id > BigInt(0)) {
     const chatId = updated.telegram_id!.toString();
-    const adminUrl = process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}/admin`
-      : 'https://check-storis-production-673a.up.railway.app/admin';
+    const adminUrl = getAdminUrl();
 
     const text = action === 'approve'
       ? `🎉 <b>Ваша заявка одобрена!</b>\n\nТеперь вы можете создавать мероприятия в панели организатора.\n\n👉 <a href="${adminUrl}">Открыть панель</a>`

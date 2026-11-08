@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getPrisma } from '@/lib/prisma';
 import { getSession } from '@/lib/admin-session';
 import { createInvoice } from '@/lib/cryptobot';
+import { getAdminUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -50,9 +51,6 @@ export async function POST(req: NextRequest) {
       description = `Оплата кампании "${event.title}" (${event.repostsNeeded} сторис)`;
     }
 
-    const APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL ||
-      (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000');
-
     const invoice = await createInvoice({
       amount: amountUsdt,
       description,
@@ -61,7 +59,7 @@ export async function POST(req: NextRequest) {
         organizerId: me.id,
         additionalSlots: additionalSlots || 0,
       }),
-      paidBtnUrl: `${APP_URL}/admin`,
+      paidBtnUrl: getAdminUrl(),
     });
 
     // Update event with invoice info

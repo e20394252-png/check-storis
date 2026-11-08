@@ -1,14 +1,9 @@
 import { Telegraf } from 'telegraf';
 import { getPrisma } from '@/lib/prisma';
 import { notifyRegistrationApproved, notifyRegistrationRejected } from '@/lib/notify';
+import { getAppUrl } from '@/lib/app-url';
 
 export const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN || 'dummy_token');
-
-const APP_URL =
-  process.env.NEXT_PUBLIC_MINI_APP_URL ||
-  (process.env.RAILWAY_PUBLIC_DOMAIN
-    ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-    : 'https://check-storis-production-673a.up.railway.app');
 // ── /start handler — авторизация через login_ deep link ───────────────────
 // Обычный /start (без payload) обработает ЛидТех.
 // /start login_TOKEN — авторизация организатора (наш webhook).
@@ -27,7 +22,7 @@ bot.start(async (ctx) => {
       // Still open the app — just no referral link
       await ctx.reply(
         `👋 Добро пожаловать в CheckStoris!\n\nЗарабатывай на репостах сторис 💰`,
-        { reply_markup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: APP_URL } }]] } }
+        { reply_markup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: getAppUrl() } }]] } }
       );
       return;
     }
@@ -47,7 +42,7 @@ bot.start(async (ctx) => {
       // Already has a referrer — just open app
       await ctx.reply(
         `👋 С возвращением!\n\nОткройте приложение, чтобы заработать на репостах 💰`,
-        { reply_markup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: APP_URL } }]] } }
+        { reply_markup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: getAppUrl() } }]] } }
       );
       return;
     }
@@ -82,7 +77,7 @@ bot.start(async (ctx) => {
 
     await ctx.reply(
       `👋 Добро пожаловать в CheckStoris!\n\nВас пригласил @${referrer.username || referrer.first_name || 'друг'} 🎉\nЗарабатывайте на репостах сторис — ваш друг тоже получит бонус!`,
-      { reply_markup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: APP_URL } }]] } }
+      { reply_markup: { inline_keyboard: [[{ text: '📱 Открыть приложение', web_app: { url: getAppUrl() } }]] } }
     );
     return;
   }

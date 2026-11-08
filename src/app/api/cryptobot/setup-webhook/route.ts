@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSession } from '@/lib/admin-session';
+import { getAppUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,13 +20,8 @@ export async function GET() {
     return NextResponse.json({ error: 'Superadmin only' }, { status: 403 });
   }
 
-  const APP_URL =
-    process.env.NEXT_PUBLIC_MINI_APP_URL ||
-    (process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : null);
-
-  const webhookUrl = APP_URL ? `${APP_URL}/api/cryptobot/webhook` : null;
+  const appUrl = getAppUrl();
+  const webhookUrl = `${appUrl}/api/cryptobot/webhook`;
 
   if (!CRYPTOBOT_TOKEN) {
     return NextResponse.json({
@@ -94,17 +90,8 @@ export async function POST() {
     return NextResponse.json({ error: 'Superadmin only' }, { status: 403 });
   }
 
-  const APP_URL =
-    process.env.NEXT_PUBLIC_MINI_APP_URL ||
-    (process.env.RAILWAY_PUBLIC_DOMAIN
-      ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
-      : null);
-
-  if (!APP_URL) {
-    return NextResponse.json({ error: 'APP_URL не определён' }, { status: 500 });
-  }
-
-  const webhookUrl = `${APP_URL}/api/cryptobot/webhook`;
+  const appUrl = getAppUrl();
+  const webhookUrl = `${appUrl}/api/cryptobot/webhook`;
 
   // Test that our webhook endpoint is reachable
   try {

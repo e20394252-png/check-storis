@@ -15,6 +15,20 @@
 | Секреты приложения | Variables / secrets в проекте Northflank (см. список в `PROJECT_OVERVIEW.md`) |
 | БД | PostgreSQL (addon Northflank или внешний URL → `DATABASE_URL` в env) |
 
+### Ссылка на админку
+
+**Постоянный путь:** `https://<ваш-домен>/admin` (без `?key=` — вход по логину/паролю организатора или «Войти через Telegram» для суперадмина).
+
+После деплоя откройте **`GET /api/health`** — в JSON будут актуальные `appUrl` и `adminUrl` (берутся из `NEXT_PUBLIC_MINI_APP_URL` или Host).
+
+Локальная проверка:
+
+```bash
+node scripts/smoke-check.mjs https://<ваш-домен>
+```
+
+**Важно:** в Northflank задайте `NEXT_PUBLIC_MINI_APP_URL=https://<ваш-домен>` — иначе кнопки Mini App в боте могут вести не на тот хост.
+
 ### Что проверить в панели Northflank
 
 1. **Service** → Git: репозиторий `check-storis`, ветка `main`, автодеплой включён.

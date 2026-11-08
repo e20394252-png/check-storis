@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/admin-session';
 import { createInvoice } from '@/lib/cryptobot';
+import { getAdminUrl } from '@/lib/app-url';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,14 +22,11 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const APP_URL = process.env.NEXT_PUBLIC_MINI_APP_URL ||
-      (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:3000');
-
     const invoice = await createInvoice({
       amount: Number(amount),
       description: `Пополнение баланса приложения (admin deposit)`,
       payload: JSON.stringify({ type: 'admin_deposit', adminId: me.id }),
-      paidBtnUrl: `${APP_URL}/admin`,
+      paidBtnUrl: getAdminUrl(),
     });
 
     return NextResponse.json({
