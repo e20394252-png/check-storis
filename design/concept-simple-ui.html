@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>CheckStoris — концепт UI (упрощённый)</title>
+  <style>
+    :root, [data-theme="light"] {
+      --bg: #faf7f2;
+      --bg2: #fff;
+      --card: #ffffff;
+      --gold: #c8a86e;
+      --gold2: #d4a853;
+      --text: #2c2214;
+      --muted: #8a7a66;
+      --border: rgba(180, 150, 100, 0.22);
+      --success: #5a9e35;
+      --error: #c44040;
+      --radius: 16px;
+      --shadow: 0 8px 32px rgba(44, 34, 20, 0.08);
+    }
+    [data-theme="dark"] {
+      --bg: #1a1410;
+      --bg2: #221c16;
+      --card: #2a2218;
+      --text: #f0e6d6;
+      --muted: #8a7a66;
+      --border: rgba(200, 168, 110, 0.2);
+      --shadow: 0 8px 32px rgba(0,0,0,0.35);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+    .page-header {
+      padding: 20px 24px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .page-header h1 { margin: 0; font-size: 1.25rem; font-weight: 800; }
+    .page-header p { margin: 4px 0 0; font-size: 0.85rem; color: var(--muted); }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .screen-btn {
+      padding: 10px 18px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .screen-btn.active {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      border-color: transparent;
+      color: #1a1410;
+    }
+    .toggle-theme {
+      padding: 10px 14px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .canvas {
+      padding: 32px 24px 48px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 40px;
+      align-items: flex-start;
+    }
+    .view { display: none; }
+    .view.active { display: flex; flex-wrap: wrap; gap: 40px; justify-content: center; width: 100%; }
+
+    /* iPhone frame */
+    .device {
+      width: 390px;
+      border-radius: 36px;
+      padding: 12px;
+      background: #1a1410;
+      box-shadow: 0 24px 64px rgba(0,0,0,0.2);
+    }
+    .device-notch {
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--gold);
+      font-weight: 600;
+    }
+    .device-screen {
+      background: var(--bg);
+      border-radius: 28px;
+      min-height: 700px;
+      padding: 20px 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+  .device-screen h2 { margin: 0; font-size: 1.35rem; font-weight: 800; line-height: 1.25; }
+    .muted { color: var(--muted); font-size: 0.875rem; margin: 0; }
+    .hero-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+    .hero-img {
+      height: 140px;
+      background: linear-gradient(135deg, #e8dcc8, #c8a86e);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 64px;
+    }
+    .hero-body { padding: 16px; }
+    .step {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: var(--bg);
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    [data-theme="light"] .step { background: #f8f4ed; }
+    .step-num {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--gold);
+      color: #1a1410;
+      font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step.done .step-num { background: var(--success); color: #fff; }
+    .step.pending { opacity: 0.45; }
+    .btn-lg {
+      width: 100%;
+      padding: 18px 20px;
+      font-size: 17px;
+      font-weight: 800;
+      border: none;
+      border-radius: 14px;
+      cursor: default;
+      margin-top: auto;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #1a1410;
+    }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-ghost {
+      background: transparent;
+      border: 2px solid var(--border);
+      color: var(--text);
+      margin-top: 0;
+    }
+    .bottom-nav {
+      display: flex;
+      gap: 8px;
+      margin: 8px -4px 0;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+    }
+    .nav-item {
+      flex: 1;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 13px;
+    }
+    .nav-item.on { background: linear-gradient(135deg, var(--gold), var(--gold2)); color: #1a1410; }
+    .nav-item.off { background: transparent; color: var(--muted); }
+
+    /* Desktop admin */
+    .desktop {
+      width: min(720px, 100%);
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .desk-top {
+      padding: 20px 24px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .desk-top h2 { margin: 0; font-size: 1.25rem; }
+    .btn-create {
+      padding: 14px 28px;
+      font-size: 16px;
+      font-weight: 800;
+      border: none;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #1a1410;
+    }
+    .event-row {
+      margin: 16px;
+      padding: 18px 20px;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 16px;
+    }
+    .event-row .emoji { font-size: 40px; }
+    .event-row .info { flex: 1; min-width: 160px; }
+    .event-row .info strong { font-size: 1.05rem; display: block; }
+    .badge {
+      background: #fff3e0;
+      color: #b45309;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 999px;
+    }
+    .btn-sm {
+      padding: 12px 20px;
+      font-weight: 700;
+      border-radius: 10px;
+      border: none;
+      background: linear-gradient(135deg, var(--gold), var(--gold2));
+      color: #1a1410;
+    }
+    .wizard { padding: 28px; }
+    .progress { height: 8px; background: var(--border); border-radius: 99px; margin: 16px 0 24px; overflow: hidden; }
+    .progress > i { display: block; height: 100%; width: 50%; background: linear-gradient(90deg, var(--gold), var(--gold2)); border-radius: 99px; }
+    label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .field {
+      width: 100%;
+      padding: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+    .preview-shot {
+      height: 240px;
+      background: linear-gradient(180deg, #b8c9b0, #8fbc6a);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 56px;
+    }
+    .legend {
+      max-width: 320px;
+      padding: 20px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      line-height: 1.55;
+    }
+    .legend h3 { margin: 0 0 12px; font-size: 1rem; }
+    .legend ul { margin: 0; padding-left: 20px; }
+    .legend li { margin-bottom: 8px; color: var(--muted); }
+    .legend li strong { color: var(--text); }
+    .tag-concept {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 6px;
+      background: #e8f5e9;
+      color: #2e7d32;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+    [data-theme="dark"] .tag-concept { background: rgba(90, 158, 53, 0.2); color: #8fcc5a; }
+  </style>
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <h1>CheckStoris <span class="tag-concept">концепт UI</span></h1>
+      <p>Только макет — в приложении пока не включено. Переключайте экраны кнопками.</p>
+    </div>
+    <div class="toolbar">
+      <button type="button" class="screen-btn active" data-view="user">Участник</button>
+      <button type="button" class="screen-btn" data-view="profile">Профиль</button>
+      <button type="button" class="screen-btn" data-view="admin">Организатор</button>
+      <button type="button" class="screen-btn" data-view="wizard">Создать</button>
+      <button type="button" class="screen-btn" data-view="mod">Проверка</button>
+      <button type="button" class="toggle-theme" id="themeBtn">🌙 Тема</button>
+    </div>
+  </header>
+
+  <main class="canvas">
+    <!-- USER EVENT -->
+    <section class="view active" id="view-user">
+      <div class="device">
+        <div class="device-notch">9:41 · CheckStoris</div>
+        <div class="device-screen">
+          <p class="muted">Привет, Мария</p>
+          <h2>Фестиваль<br>«Весна в городе»</h2>
+          <p class="muted">15 марта · Парк · награда 50 USDT за репост</p>
+          <div class="hero-card">
+            <div class="hero-img">🎪</div>
+            <div class="hero-body">
+              <p class="muted" style="margin-bottom:12px">Ваши шаги</p>
+              <div class="step done"><span class="step-num">✓</span><span><strong>Репост</strong> — ссылка открыта</span></div>
+              <div class="step"><span class="step-num">2</span><span><strong>Скрин</strong> — сфотографируйте сторис</span></div>
+              <div class="step pending"><span class="step-num">3</span><span>Ответ организатора</span></div>
+            </div>
+          </div>
+          <button type="button" class="btn-lg btn-primary">📷 Приложить скрин</button>
+          <button type="button" class="btn-lg btn-ghost">Как сделать репост?</button>
+          <nav class="bottom-nav">
+            <button type="button" class="nav-item on">Мероприятия</button>
+            <button type="button" class="nav-item off">Профиль</button>
+          </nav>
+        </div>
+      </div>
+      <aside class="legend">
+        <h3>Участник</h3>
+        <ul>
+          <li><strong>Одно мероприятие</strong> на экране, без длинного списка внизу.</li>
+          <li><strong>Чеклист из 3 шагов</strong> — всегда видно, что дальше.</li>
+          <li><strong>Одна золотая кнопка</strong> — главное действие.</li>
+          <li>Вторичное — контуром, не конкурирует.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <!-- PROFILE -->
+    <section class="view" id="view-profile">
+      <div class="device">
+        <div class="device-notch">Профиль</div>
+        <div class="device-screen">
+          <h2>Профиль</h2>
+          <div class="hero-card" style="padding:20px;text-align:center">
+            <div style="font-size:48px;margin-bottom:8px">👤</div>
+            <strong style="font-size:1.1rem">@maria_k</strong>
+            <p class="muted">Участник с января</p>
+          </div>
+          <div class="hero-card" style="padding:18px">
+            <p class="muted">Баланс</p>
+            <p style="font-size:2rem;font-weight:800;margin:4px 0">124,50 <span style="font-size:1rem;color:var(--muted)">USDT</span></p>
+            <button type="button" class="btn-lg btn-primary" style="margin-top:12px">Вывести</button>
+          </div>
+          <button type="button" class="btn-lg btn-ghost">Пригласить друга</button>
+          <nav class="bottom-nav">
+            <button type="button" class="nav-item off">Мероприятия</button>
+            <button type="button" class="nav-item on">Профиль</button>
+          </nav>
+        </div>
+      </div>
+      <aside class="legend">
+        <h3>Профиль отдельно</h3>
+        <ul>
+          <li>Кошелёк и рефералы <strong>не на экране заявки</strong>.</li>
+          <li>Крупные цифры баланса, одна кнопка «Вывести».</li>
+        </ul>
+      </aside>
+    </section>
+
+    <!-- ADMIN HOME -->
+    <section class="view" id="view-admin">
+      <div class="desktop">
+        <div class="desk-top">
+          <div>
+            <h2>Ваши мероприятия</h2>
+            <p class="muted" style="margin:4px 0 0">3 активных</p>
+          </div>
+          <button type="button" class="btn-create">＋ Создать</button>
+        </div>
+        <div class="event-row">
+          <span class="emoji">🎪</span>
+          <div class="info">
+            <strong>Весна в городе</strong>
+            <span class="muted">12 заявок · оплата репостов включена</span>
+          </div>
+          <span class="badge">4 новых</span>
+          <button type="button" class="btn-sm">Проверить</button>
+        </div>
+        <div class="event-row">
+          <span class="emoji">🎸</span>
+          <div class="info">
+            <strong>Концерт на крыше</strong>
+            <span class="muted">Все заявки обработаны</span>
+          </div>
+          <button type="button" class="btn-sm" style="background:var(--bg);border:1px solid var(--border)">Открыть</button>
+        </div>
+        <p class="muted" style="padding:0 20px 20px;font-size:13px">CryptoBot и рефералы — в «Настройки» или только у суперадмина.</p>
+      </div>
+      <aside class="legend">
+        <h3>Организатор</h3>
+        <ul>
+          <li>Старт с <strong>«Создать»</strong> и карточек мероприятий.</li>
+          <li>Бейдж <strong>«N новых»</strong> — сразу видно, куда жать.</li>
+          <li>Без россыпи вкладок сверху на первом экране.</li>
+        </ul>
+      </aside>
+    </section>
+
+    <!-- WIZARD -->
+    <section class="view" id="view-wizard">
+      <div class="desktop">
+        <div class="wizard">
+          <p class="muted">Шаг 2 из 4 · Когда и где</p>
+          <div class="progress"><i></i></div>
+          <label>Название</label>
+          <input class="field" value="Весна в городе" readonly />
+          <label>Дата</label>
+          <input class="field" value="15 марта 2026" readonly />
+          <label>Место (необязательно)</label>
+          <input class="field" placeholder="Парк Горького" readonly />
+          <button type="button" class="btn-lg btn-primary" style="max-width:320px">Далее →</button>
+          <p class="muted" style="margin-top:20px">1 Основное · 2 Дата · 3 Ссылка на репост · 4 Опубликовать</p>
+        </div>
+      </div>
+      <aside class="legend">
+        <h3>Мастер создания</h3>
+        <ul>
+          <li><strong>4 коротких шага</strong> вместо одной длинной формы.</li>
+          <li>Оплата репостов — на шаге 4 или «расширенные настройки».</li>
+        </ul>
+      </aside>
+    </section>
+
+    <!-- MODERATION -->
+    <section class="view" id="view-mod">
+      <div class="device">
+        <div class="device-notch">Проверка заявок</div>
+        <div class="device-screen">
+          <p class="muted">Заявка 1 из 4 · Весна в городе</p>
+          <h2>@maria_k</h2>
+          <div class="preview-shot">🖼</div>
+          <p class="muted">Скрин сторис · 12 марта 19:04</p>
+          <button type="button" class="btn-lg btn-success">✓ Одобрить</button>
+          <button type="button" class="btn-lg btn-ghost" style="border-color:var(--error);color:var(--error)">✕ Отклонить</button>
+          <p class="muted" style="text-align:center">Следующая заявка — свайп или стрелки</p>
+        </div>
+      </div>
+      <aside class="legend">
+        <h3>Модерация</h3>
+        <ul>
+          <li><strong>Большой превью</strong> скрина по центру.</li>
+          <li>Только два решения — зелёная и красная кнопки.</li>
+          <li>Очередь «1 из N» — понятный прогресс.</li>
+        </ul>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    document.querySelectorAll('.screen-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.screen-btn').forEach((b) => b.classList.remove('active'));
+        document.querySelectorAll('.view').forEach((v) => v.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('view-' + btn.dataset.view)?.classList.add('active');
+      });
+    });
+    const html = document.documentElement;
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      const dark = html.getAttribute('data-theme') === 'dark';
+      html.setAttribute('data-theme', dark ? 'light' : 'dark');
+      document.getElementById('themeBtn').textContent = dark ? '🌙 Тема' : '☀️ Тема';
+    });
+  </script>
+</body>
+</html>

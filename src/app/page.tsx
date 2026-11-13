@@ -64,6 +64,7 @@ export default function App() {
   const [storyUrl, setStoryUrl] = useState('');
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<'events'|'profile'>('events');
+  const [focusEventId, setFocusEventId] = useState<string | null>(null);
   const [walletData, setWalletData] = useState<WalletData|null>(null);
   const [walletLoading, setWalletLoading] = useState(false);
   const [withdrawing, setWithdrawing] = useState(false);
@@ -203,6 +204,9 @@ export default function App() {
   const archivedEvents = events
     .filter(ev => ev.date && nowMs - new Date(ev.date).getTime() >= DAY)
     .sort((a, b) => new Date(b.date!).getTime() - new Date(a.date!).getTime());
+
+  const focusEv =
+    currentEvents.find((e) => e.id === (focusEventId ?? currentEvents[0]?.id)) ?? currentEvents[0];
 
   if (events.length === 0) {
     return (
@@ -419,47 +423,36 @@ export default function App() {
     </div>
   );
 
-  return (
-    <div style={{ minHeight: '100vh', padding: '20px 20px 80px', maxWidth: 520, margin: '0 auto', position: 'relative', zIndex: 1 }} className="animate-fade-in">
-      {/* Tab bar */}
-      <div style={{ display:'flex', gap:4, background:'var(--bg-card)', borderRadius:12, padding:4, border:'1px solid var(--border-subtle)', marginBottom:18 }}>
-        <button onClick={() => setActiveTab('events')} className={`tab-bar-item ${activeTab==='events' ? 'active' : ''}`}>📋 Мероприятия</button>
-        <button onClick={() => setActiveTab('profile')} className={`tab-bar-item ${activeTab==='profile' ? 'active' : ''}`} style={{ position:'relative' }}>
-          👤 Кабинет
-          {(meData?.wallet?.balance ?? 0) > 0 && <span style={{ position:'absolute', top:4, right:8, width:7, height:7, borderRadius:'50%', background:'var(--accent-success)' }} />}
-        </button>
-      </div>
-
-      {activeTab === 'profile' ? <ProfileView /> : (
-      <>
-      {/* Шапка */}
-      <div style={{ marginBottom: 18 }}>
-        {user?.first_name && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 6 }}>👋 Привет, <b style={{ color: 'var(--accent-cream)' }}>{user.first_name}</b></div>}
-        <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', lineHeight: 1.2, color: 'var(--accent-cream)' }}>Мероприятия</div>
-        <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 5 }}>Выбери мероприятие и зарегистрируйся</div>
-      </div>
-
-      {currentEvents.length === 0 && archivedEvents.length === 0 && (
-        <div style={{ textAlign: 'center', padding: '40px 0' }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>🎪</div>
-          <div style={{ fontSize: 15, fontWeight: 600, color: 'var(--text-muted)' }}>Нет мероприятий</div>
-        </div>
-      )}
-
-      {/* Список мероприятий */}
-      {currentEvents.map(ev => {
+  const renderEventCard = (ev: EventItem) => {
         const reg = ev.registration;
         const regStatus = (reg ? reg.status : 'none') as RegStatus;
         const meta = statusMeta[regStatus];
         const isOpen = activeEventId === ev.id;
         const isPast = false;
 
+        const stepRepostDone = !!ev.repostUrl && regStatus !== 'none';
+        const stepUploadDone = regStatus === 'pending' || regStatus === 'approved';
+        const stepDone = regStatus === 'approved';
+
         return (
-          <div key={ev.id} style={{
-            background: 'var(--bg-card)', border: ev.isFeatured ? '2px solid rgba(212,168,83,0.5)' : '1px solid', borderRadius: 16, padding: '18px 20px', marginBottom: 14, position: 'relative', overflow: 'hidden', opacity: isPast ? 0.7 : 1,
-            borderColor: ev.isFeatured ? 'rgba(212,168,83,0.5)' : regStatus === 'approved' ? 'rgba(143,188,106,0.3)' : regStatus === 'pending' ? 'rgba(212,168,83,0.25)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.2)' : 'var(--border-subtle)',
-            boxShadow: ev.isFeatured ? '0 0 20px rgba(212,168,83,0.12)' : undefined,
+          <div key={ev.id} className="cs-hero-card" style={{ padding: '18px 20px', marginBottom: 14, position: 'relative', overflow: 'hidden', opacity: isPast ? 0.7 : 1,
+            borderColor: ev.isFeatured ? 'rgba(212,168,83,0.5)' : regStatus === 'approved' ? 'rgba(143,188,106,0.3)' : regStatus === 'pending' ? 'rgba(212,168,83,0.25)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.2)' : undefined,
           }}>
+            <div style={{ marginBottom: 14 }}>
+              <p className="muted" style={{ marginBottom: 10, fontSize: 12 }}>Ваши шаги</p>
+              <div className={`cs-step ${stepRepostDone || regStatus !== 'none' ? 'done' : ''}`}>
+                <span className="cs-step-num">{stepRepostDone || regStatus !== 'none' ? '✓' : '1'}</span>
+                <span><strong>Репост</strong> — откройте публикацию</span>
+              </div>
+              <div className={`cs-step ${stepUploadDone ? 'done' : ''}`}>
+                <span className="cs-step-num">{stepUploadDone ? '✓' : '2'}</span>
+                <span><strong>Скрин</strong> — приложите фото сторис</span>
+              </div>
+              <div className={`cs-step ${stepDone ? 'done' : 'pending-step'}`}>
+                <span className="cs-step-num">{stepDone ? '✓' : '3'}</span>
+                <span><strong>Ответ</strong> — {regStatus === 'pending' ? 'на проверке' : regStatus === 'rejected' ? 'нужен новый скрин' : regStatus === 'approved' ? 'вы в списке' : 'после проверки'}</span>
+              </div>
+            </div>
             {/* Featured badge */}
             {ev.isFeatured && (
               <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:10, padding:'6px 12px', background:'linear-gradient(135deg, rgba(212,168,83,0.15), rgba(212,168,83,0.05))', border:'1px solid rgba(212,168,83,0.3)', borderRadius:8 }}>
@@ -564,74 +557,101 @@ export default function App() {
             )}
 
             {!isPast && (regStatus === 'none' || regStatus === 'rejected') && !isOpen && (
-              <button onClick={() => openUpload(ev.id)} className="warm-btn-primary" style={{ width: '100%', padding: '12px', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-                📸 {regStatus === 'rejected' ? 'Загрузить новый скриншот' : 'Загрузить скриншот репоста'}
+              <button type="button" onClick={() => openUpload(ev.id)} className="cs-btn-xl warm-btn-primary">
+                📷 {regStatus === 'rejected' ? 'Приложить новый скрин' : 'Приложить скрин'}
               </button>
             )}
 
             {isOpen && <UploadForm eventId={ev.id} />}
           </div>
         );
-      })}
+  };
 
-      {/* Архив */}
-      {archivedEvents.length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          <button
-            onClick={() => setArchiveOpen(!archiveOpen)}
-            style={{
-              width:'100%', padding:'14px 20px', display:'flex', alignItems:'center', justifyContent:'space-between',
-              background:'rgba(200,168,110,0.04)', border:'1px solid rgba(200,168,110,0.12)', borderRadius:12,
-              color:'var(--text-muted)', fontSize:14, fontWeight:600, cursor:'pointer', transition:'all 0.2s'
-            }}
-          >
-            <span>📦 Архив ({archivedEvents.length})</span>
-            <span style={{ transform: archiveOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition:'transform 0.25s ease', fontSize:16, lineHeight:1 }}>▼</span>
-          </button>
-          {archiveOpen && (
-            <div style={{ marginTop: 14 }}>
-              {archivedEvents.map(ev => {
-                const reg = ev.registration;
-                const regStatus = (reg ? reg.status : 'none') as RegStatus;
-                const meta = statusMeta[regStatus];
-                return (
-                  <div key={ev.id} style={{
-                    background: 'var(--bg-card)', border: '1px solid', borderRadius: 16, padding: '18px 20px', marginBottom: 14, position: 'relative', overflow: 'hidden', opacity: 0.7,
-                    borderColor: regStatus === 'approved' ? 'rgba(143,188,106,0.3)' : regStatus === 'pending' ? 'rgba(212,168,83,0.25)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.2)' : 'var(--border-subtle)',
-                  }}>
-                    {ev.imageUrl && <img src={ev.imageUrl} alt="" className="event-image" />}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-                      <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, flex: 1, paddingRight: 10, color: 'var(--accent-cream)' }}>{ev.title}</div>
-                      <span style={{
-                        fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap',
-                        background: regStatus === 'approved' ? 'rgba(143,188,106,0.12)' : regStatus === 'pending' ? 'rgba(212,168,83,0.12)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)',
-                        color: meta.color, border: `1px solid ${meta.color}40`,
-                      }}>{meta.icon} {meta.label.toUpperCase()}</span>
-                    </div>
-                    {ev.description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>{renderRichText(ev.description)}</div>}
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                      {ev.date && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>📅 {formatDate(ev.date)}</span>}
-                      {ev.location && <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>📍 {ev.location}</span>}
-                    </div>
-                    {regStatus === 'approved' && (
-                      <div className="approved-banner" style={{ padding: '12px 16px', textAlign: 'center', marginTop: 10 }}>
-                        <div style={{ fontWeight: 800, fontSize: 14, color: 'var(--accent-success)', letterSpacing: '0.04em' }}>✅ ТЫ В СПИСКЕ УЧАСТНИКОВ</div>
+  return (
+    <div className="cs-app-shell animate-fade-in">
+      {activeTab === 'profile' ? (
+        <ProfileView />
+      ) : (
+        <>
+          {user?.first_name && (
+            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 8px' }}>
+              Привет, <b style={{ color: 'var(--accent-cream)' }}>{user.first_name}</b>
+            </p>
+          )}
+
+          {currentEvents.length === 0 && archivedEvents.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '48px 0' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🎪</div>
+              <p style={{ fontSize: 16, fontWeight: 600, color: 'var(--text-muted)', margin: 0 }}>Мероприятий пока нет</p>
+            </div>
+          ) : (
+            <>
+              {currentEvents.length > 1 && (
+                <div className="cs-event-chips">
+                  {currentEvents.map((ev) => (
+                    <button
+                      key={ev.id}
+                      type="button"
+                      className={`cs-event-chip ${(focusEventId ?? currentEvents[0]?.id) === ev.id ? 'active' : ''}`}
+                      onClick={() => setFocusEventId(ev.id)}
+                    >
+                      {ev.title}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {focusEv && (
+                <>
+                  <h2 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2, color: 'var(--accent-cream)' }}>{focusEv.title}</h2>
+                  <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                    {[formatDate(focusEv.date), focusEv.location, focusEv.isPaidRepost && focusEv.repostRewardUsdt ? `награда ${focusEv.repostRewardUsdt} USDT` : null]
+                      .filter(Boolean)
+                      .join(' · ')}
+                  </p>
+                  {renderEventCard(focusEv)}
+                </>
+              )}
+
+              {archivedEvents.length > 0 && (
+                <div style={{ marginTop: 16 }}>
+                  <button
+                    type="button"
+                    onClick={() => setArchiveOpen(!archiveOpen)}
+                    className="cs-btn-xl outline"
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
+                  >
+                    <span>📦 Архив ({archivedEvents.length})</span>
+                    <span>{archiveOpen ? '▲' : '▼'}</span>
+                  </button>
+                  {archiveOpen &&
+                    archivedEvents.map((ev) => (
+                      <div key={ev.id} style={{ marginTop: 12, opacity: 0.85 }}>
+                        {renderEventCard(ev)}
                       </div>
-                    )}
-                  </div>
-                );
-              })}
+                    ))}
+                </div>
+              )}
+            </>
+          )}
+
+          {!initData && (
+            <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(212,168,83,0.08)', border: '1px solid rgba(212,168,83,0.3)', borderRadius: 10, fontSize: 12, color: 'var(--accent-warning)', textAlign: 'center' }}>
+              ⚠️ Открой приложение через Telegram-бота
             </div>
           )}
-        </div>
+        </>
       )}
 
-      {!initData && (
-        <div style={{ marginTop: 16, padding: '12px 16px', background: 'rgba(212,168,83,0.08)', border: '1px solid rgba(212,168,83,0.3)', borderRadius: 10, fontSize: 12, color: 'var(--accent-warning)', textAlign: 'center' }}>
-          ⚠️ Открой приложение через Telegram-бота
-        </div>
-      )}
-      </>)}
+      <nav className="cs-bottom-nav" aria-label="Разделы">
+        <button type="button" className={activeTab === 'events' ? 'on' : 'off'} onClick={() => setActiveTab('events')}>
+          Мероприятия
+        </button>
+        <button type="button" className={activeTab === 'profile' ? 'on' : 'off'} onClick={() => setActiveTab('profile')}>
+          Профиль
+          {(meData?.wallet?.balance ?? 0) > 0 ? ' · 💰' : ''}
+        </button>
+      </nav>
     </div>
   );
 }

@@ -16,7 +16,9 @@ const card = 'var(--bg-card)'; const bg = 'var(--bg-primary)';
 const inp: React.CSSProperties = { width:'100%', padding:'10px 14px', background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:8, color:'var(--text-primary)', fontSize:14, outline:'none' };
 
 export default function AdminClient({ organizer, onLogout }: { organizer: Org; onLogout: () => void }) {
-  const [tab, setTab] = useState('pending');
+  const [tab, setTab] = useState('home');
+  const [pendingEventFilter, setPendingEventFilter] = useState<string | null>(null);
+  const [modIndex, setModIndex] = useState(0);
   const [events, setEvents] = useState<Ev[]>([]);
   const [regs, setRegs] = useState<Reg[]>([]);
   const [orgs, setOrgs] = useState<OrgItem[]>([]);
@@ -98,6 +100,11 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   const approved = regs.filter(r => r.status === 'APPROVED');
   const rejected = regs.filter(r => r.status === 'REJECTED');
   const pendingOrgs = orgs.filter(o => o.status === 'PENDING');
+  const pendingFiltered = pending.filter(r => !pendingEventFilter || r.event?.id === pendingEventFilter);
+  const nowTs = Date.now();
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const activeEventsHome = events.filter(ev => !ev.date || nowTs - new Date(ev.date).getTime() < DAY_MS);
+  const pendingCountForEvent = (evId: string) => pending.filter(r => r.event?.id === evId).length;
 
   const review = async (id: string, action: string, note?: string) => {
     setBusy(id);
@@ -182,16 +189,14 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
         </div>
       </div>
 
-      {/* Табы */}
-      <div style={{ padding:'14px 28px', borderBottom:'1px solid var(--border-subtle)', display:'flex', gap:8, flexWrap:'wrap' }}>
-        <TabBtn id="pending" label="🔍 На проверке" count={pending.length} />
-        <TabBtn id="approved" label="✅ Одобренные" count={approved.length} />
-        <TabBtn id="rejected" label="❌ Отклонённые" count={rejected.length} />
-        <TabBtn id="events" label="📅 Мероприятия" count={events.length} />
-        <TabBtn id="guide" label="💡 Инструкция" />
-        {organizer.isSuperAdmin && <TabBtn id="organizers" label="👥 Организаторы" count={pendingOrgs.length} />}
-        {organizer.isSuperAdmin && <TabBtn id="referrals" label="🔗 Рефералы" />}
-        {organizer.isSuperAdmin && <TabBtn id="cryptobot" label="💳 CryptoBot" />}
+      {/* Табы (UI v2) */}
+      <div className="cs-tabs-simple">
+        <button type="button" className={tab === 'home' ? 'active' : ''} onClick={() => setTab('home')}>Главная</button>
+        <button type="button" className={tab === 'pending' ? 'active' : ''} onClick={() => { setTab('pending'); setModIndex(0); }}>
+          Проверка {pending.length > 0 ? `(${pending.length})` : ''}
+        </button>
+        <button type="button" className={tab === 'events' ? 'active' : ''} onClick={() => setTab('events')}>Мероприятия</button>
+        <button type="button" className={tab === 'more' ? 'active' : ''} onClick={() => setTab('more')}>Ещё</button>
       </div>
 
       <div style={{ padding:'24px 28px' }}>
@@ -202,41 +207,106 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             <button onClick={load} style={{ padding:'6px 14px', fontSize:12, fontWeight:700, borderRadius:8, background:'rgba(199,92,92,0.15)', border:'1px solid rgba(199,92,92,0.3)', color:error, cursor:'pointer', whiteSpace:'nowrap' }}>🔄 Повторить</button>
           </div>
         )}
+
+        {tab === 'home' && (
+          <div>
+            <div className="cs-admin-home-top">
+              <div>
+                <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800 }}>Ваши мероприятия</h2>
+                <p style={{ margin: '6px 0 0', fontSize: 14, color: muted }}>{activeEventsHome.length} активных</p>
+              </div>
+              <button type="button" className="cs-btn-create" onClick={() => { setTab('events'); setCreating(true); }}>＋ Создать</button>
+            </div>
+            {activeEventsHome.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '48px 0', color: muted }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>📅</div>
+                <p style={{ fontSize: 16, fontWeight: 600 }}>Создайте первое мероприятие</p>
+              </div>
+            ) : activeEventsHome.map(ev => {
+              const n = pendingCountForEvent(ev.id);
+              return (
+                <div key={ev.id} className="cs-event-row">
+                  <span style={{ fontSize: 36 }}>🎪</span>
+                  <div style={{ flex: 1, minWidth: 140 }}>
+                    <strong style={{ fontSize: 16 }}>{ev.title}</strong>
+                    <p style={{ margin: '4px 0 0', fontSize: 13, color: muted }}>{ev._count?.registrations ?? 0} заявок</p>
+                  </div>
+                  {n > 0 && <span className="cs-badge-new">{n} новых</span>}
+                  <button
+                    type="button"
+                    className="cs-btn-create"
+                    style={{ padding: '12px 18px', fontSize: 14 }}
+                    onClick={() => { setPendingEventFilter(ev.id); setTab('pending'); setModIndex(0); }}
+                  >
+                    {n > 0 ? 'Проверить' : 'Открыть'}
+                  </button>
+                </div>
+              );
+            })}
+            {pending.length > 0 && (
+              <button
+                type="button"
+                className="cs-btn-xl warm-btn-primary"
+                style={{ maxWidth: 400, marginTop: 8 }}
+                onClick={() => { setPendingEventFilter(null); setTab('pending'); setModIndex(0); }}
+              >
+                Все заявки на проверке ({pending.length})
+              </button>
+            )}
+          </div>
+        )}
+
+        {tab === 'more' && (
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
+            <TabBtn id="approved" label="✅ Одобренные" count={approved.length} />
+            <TabBtn id="rejected" label="❌ Отклонённые" count={rejected.length} />
+            <TabBtn id="guide" label="💡 Инструкция" />
+            {organizer.isSuperAdmin && <TabBtn id="organizers" label="👥 Организаторы" count={pendingOrgs.length} />}
+            {organizer.isSuperAdmin && <TabBtn id="referrals" label="🔗 Рефералы" />}
+            {organizer.isSuperAdmin && <TabBtn id="cryptobot" label="💳 CryptoBot" />}
+            <p style={{ width: '100%', fontSize: 12, color: muted, marginTop: 12 }}>Классический UI v1: design/legacy/ui-v1/</p>
+          </div>
+        )}
+
         {/* НА ПРОВЕРКЕ */}
         {tab === 'pending' && (
-          <div>
-            {pending.length === 0 ? (
+          <div className="cs-mod-focus">
+            {pendingEventFilter && (
+              <button type="button" onClick={() => { setPendingEventFilter(null); setModIndex(0); }} style={{ marginBottom: 12, background: 'none', border: 'none', color: gold, cursor: 'pointer', fontSize: 13 }}>
+                ← Все мероприятия
+              </button>
+            )}
+            {pendingFiltered.length === 0 ? (
               <div style={{ textAlign:'center', padding:'60px 0', color:muted }}><div style={{ fontSize:48, marginBottom:12 }}>🎉</div><div style={{ fontSize:16, fontWeight:600 }}>Всё проверено!</div></div>
-            ) : pending.map(r => (
-              <div key={r.id} style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, overflow:'hidden', marginBottom:20 }}>
-                <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                  <div>
-                    <div style={{ fontWeight:700, fontSize:15 }}>{r.user.first_name || '—'}{r.user.username && <span style={{ color:muted, fontWeight:400, fontSize:13 }}> @{r.user.username}</span>}</div>
-                    <div style={{ fontSize:11, color:muted, marginTop:3 }}>
-                      {r.event.title && <span style={{ color:gold, marginRight:8 }}>📅 {r.event.title}</span>}
-                      {new Date(r.createdAt).toLocaleString('ru-RU', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}
-                    </div>
-                  </div>
-                  <span className="badge-pending">НА ПРОВЕРКЕ</span>
-                </div>
+            ) : (() => {
+              const r = pendingFiltered[Math.min(modIndex, pendingFiltered.length - 1)];
+              return (
+              <div key={r.id} style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:16, padding:20 }}>
+                <p style={{ fontSize: 13, color: muted, margin: '0 0 8px' }}>Заявка {modIndex + 1} из {pendingFiltered.length}</p>
+                <h2 style={{ margin: '0 0 4px', fontSize: 22, fontWeight: 800 }}>{r.user.first_name || '—'}{r.user.username ? ` @${r.user.username}` : ''}</h2>
+                <p style={{ fontSize: 13, color: gold, margin: '0 0 12px' }}>{r.event.title}</p>
                 {r.proofUrl && (
-                  <div style={{ padding:'14px 20px', borderBottom:'1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize:10, color:muted, marginBottom:10 }}>СКРИНШОТ</div>
-                    <img src={r.proofUrl} alt="proof" style={{ maxWidth:'100%', maxHeight:500, borderRadius:10, border:'1px solid var(--border-subtle)', objectFit:'contain', display:'block' }} />
+                  <div className="cs-mod-proof">
+                    <img src={r.proofUrl} alt="Скриншот репоста" />
                   </div>
                 )}
-                {r.storyUrl && (
-                  <div style={{ padding:'10px 20px', borderBottom:'1px solid var(--border-subtle)' }}>
-                    <div style={{ fontSize:10, color:muted, marginBottom:4 }}>ССЫЛКА НА СТОРИС</div>
-                    <a href={r.storyUrl} target="_blank" rel="noopener noreferrer" style={{ color:gold, fontSize:13 }}>{r.storyUrl}</a>
-                  </div>
-                )}
-                <div style={{ padding:'16px 20px', display:'flex', gap:12 }}>
-                  <button disabled={busy===r.id} onClick={() => review(r.id, 'approve')} className="warm-btn-approve" style={{ flex:1, padding:'13px', fontSize:14 }}>{busy===r.id ? '...' : '✓ ОДОБРИТЬ'}</button>
-                  <button disabled={busy===r.id} onClick={() => review(r.id, 'reject')} className="warm-btn-reject" style={{ flex:1, padding:'13px', fontSize:14 }}>{busy===r.id ? '...' : '✗ ОТКЛОНИТЬ'}</button>
+                {r.storyUrl && <a href={r.storyUrl} target="_blank" rel="noopener noreferrer" style={{ color: gold, fontSize: 13 }}>{r.storyUrl}</a>}
+                <div style={{ display:'flex', flexDirection:'column', gap:12, marginTop:16 }}>
+                  <button type="button" disabled={busy===r.id} onClick={async () => { await review(r.id, 'approve'); setModIndex(i => Math.min(i, Math.max(0, pendingFiltered.length - 2))); }} className="cs-btn-xl warm-btn-approve">
+                    {busy===r.id ? '...' : '✓ Одобрить'}
+                  </button>
+                  <button type="button" disabled={busy===r.id} onClick={async () => { await review(r.id, 'reject'); setModIndex(i => Math.min(i, Math.max(0, pendingFiltered.length - 2))); }} className="cs-btn-xl outline" style={{ borderColor: 'rgba(199,92,92,0.4)', color: error }}>
+                    {busy===r.id ? '...' : '✕ Отклонить'}
+                  </button>
                 </div>
+                {pendingFiltered.length > 1 && (
+                  <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+                    <button type="button" className="cs-btn-xl outline" style={{ flex: 1 }} disabled={modIndex === 0} onClick={() => setModIndex(i => i - 1)}>← Назад</button>
+                    <button type="button" className="cs-btn-xl outline" style={{ flex: 1 }} disabled={modIndex >= pendingFiltered.length - 1} onClick={() => setModIndex(i => i + 1)}>Далее →</button>
+                  </div>
+                )}
               </div>
-            ))}
+            ); })()}
           </div>
         )}
 
@@ -520,6 +590,8 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
   const [parseUrl, setParseUrl] = useState('');
   const [parsing, setParsing] = useState(false);
   const [parseError, setParseError] = useState('');
+  const [wizardStep, setWizardStep] = useState(1);
+  const wizardTotal = 4;
 
   const handleParse = async () => {
     if (!parseUrl.trim()) return;
@@ -570,9 +642,13 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
   return (
     <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:24 }}>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:20 }}>
-        <div style={{ fontSize:12, color:muted }}>{event ? 'Редактировать' : 'Новое мероприятие'}</div>
+        <div style={{ fontSize:12, color:muted }}>{event ? 'Редактировать' : `Новое мероприятие · шаг ${wizardStep} из ${wizardTotal}`}</div>
         <button onClick={onCancel} style={{ fontSize:12, color:muted, background:'none', border:'none', cursor:'pointer' }}>← Назад</button>
       </div>
+
+      {!event && (
+        <div className="cs-wizard-progress"><div style={{ width: `${(wizardStep / wizardTotal) * 100}%` }} /></div>
+      )}
 
       {/* Парсинг ссылки */}
       {!event && (
@@ -691,7 +767,13 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
           </div>
         </div>
         <div style={{ gridColumn:'1/-1' }}>
-          <button onClick={submit} disabled={saving||!title} className="warm-btn-primary" style={{ padding:'13px 28px', fontSize:14 }}>{saving ? 'Сохраняем...' : event ? '💾 Сохранить' : '+ Создать'}</button>
+          {!event && (
+            <div style={{ display: 'flex', gap: 10, marginBottom: 14 }}>
+              <button type="button" className="cs-btn-xl outline" style={{ flex: 1 }} disabled={wizardStep <= 1} onClick={() => setWizardStep((s) => Math.max(1, s - 1))}>← Назад</button>
+              <button type="button" className="cs-btn-xl outline" style={{ flex: 1 }} disabled={wizardStep >= wizardTotal} onClick={() => setWizardStep((s) => Math.min(wizardTotal, s + 1))}>Далее →</button>
+            </div>
+          )}
+          <button type="button" onClick={submit} disabled={saving||!title} className="cs-btn-xl warm-btn-primary" style={{ width: '100%', maxWidth: 360 }}>{saving ? 'Сохраняем...' : event ? '💾 Сохранить' : 'Опубликовать'}</button>
         </div>
       </div>
     </div>

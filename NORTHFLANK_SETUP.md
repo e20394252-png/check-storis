@@ -25,7 +25,7 @@ node scripts/northflank-bootstrap.mjs
 
 | Variable | Назначение |
 |----------|------------|
-| `DATABASE_URL` | PostgreSQL (Addon Postgres или внешний URL) |
+| `DATABASE_URL` | Addon **check-storis-db** в этом же проекте (скрипт `node scripts/northflank-provision-db.mjs`) |
 | `TELEGRAM_BOT_TOKEN` | Бот @BotFather |
 | `NEXT_PUBLIC_BOT_USERNAME` | `check_storis_bot` (без @) |
 | `NEXT_PUBLIC_MINI_APP_URL` | **точный** HTTPS URL из Networking (без `/` в конце) |
