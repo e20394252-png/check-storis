@@ -167,7 +167,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   );
 
   return (
-    <div style={{ minHeight:'100vh', background:bg, color:'var(--text-primary)', fontFamily:'Inter,sans-serif', transition:'background 0.35s ease, color 0.35s ease' }}>
+    <div className="cs-admin-shell" style={{ background:bg, color:'var(--text-primary)', fontFamily:'Inter,sans-serif', transition:'background 0.35s ease, color 0.35s ease' }}>
       {/* Шапка */}
       <div style={{ padding:'18px 28px', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
         <div>
@@ -199,7 +199,7 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
         <button type="button" className={tab === 'more' ? 'active' : ''} onClick={() => setTab('more')}>Ещё</button>
       </div>
 
-      <div style={{ padding:'24px 28px' }}>
+      <div className="cs-admin-content">
         {/* Error banner */}
         {loadError && (
           <div style={{ marginBottom:16, padding:'12px 16px', background:'rgba(199,92,92,0.1)', border:'1px solid rgba(199,92,92,0.3)', borderRadius:10, display:'flex', justifyContent:'space-between', alignItems:'center', gap:12 }}>
@@ -640,7 +640,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
   const submit = () => onSave({ title, description:desc||null, date:date||null, location:loc||null, repostUrl:url||null, isActive:active, imageUrl:img||null, price: price ? Number(price) : null, discountPrice: discountPrice ? Number(discountPrice) : null, isPaidRepost, repostRewardUsdt: isPaidRepost && rewardUsdt ? Number(rewardUsdt) : null, repostsNeeded: isPaidRepost && repostsNeeded ? Number(repostsNeeded) : null });
 
   return (
-    <div style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:24 }}>
+    <div className="cs-event-form" style={{ background:card, border:'1px solid var(--border-subtle)', borderRadius:14, padding:24 }}>
       <div style={{ display:'flex', justifyContent:'space-between', marginBottom:20 }}>
         <div style={{ fontSize:12, color:muted }}>{event ? 'Редактировать' : `Новое мероприятие · шаг ${wizardStep} из ${wizardTotal}`}</div>
         <button onClick={onCancel} style={{ fontSize:12, color:muted, background:'none', border:'none', cursor:'pointer' }}>← Назад</button>
@@ -654,12 +654,12 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
       {!event && (
         <div style={{ marginBottom:20, padding:'16px 18px', background:'rgba(200,168,110,0.04)', border:'1px solid var(--border-subtle)', borderRadius:10 }}>
           <label style={{ fontSize:11, color:gold, display:'block', marginBottom:8, fontWeight:600 }}>🔗 ВСТАВЬ ССЫЛКУ НА ПОСТ — ЗАПОЛНИМ АВТОМАТИЧЕСКИ</label>
-          <div style={{ display:'flex', gap:8 }}>
+          <div className="cs-parse-row">
             <input
               value={parseUrl} onChange={e => setParseUrl(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleParse()}
               placeholder="https://t.me/channel/123"
-              style={{ ...inp, flex:1 }}
+              style={{ ...inp, flex:1, minWidth:0 }}
             />
             <button onClick={handleParse} disabled={parsing || !parseUrl.trim()} style={{
               padding:'10px 18px', fontSize:13, fontWeight:700, borderRadius:8, whiteSpace:'nowrap',
@@ -672,7 +672,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
           {parseError && <div style={{ marginTop:8, fontSize:12, color:error }}>❌ {parseError}</div>}
         </div>
       )}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:16 }}>
+      <div className="cs-event-form-grid">
         <div style={{ gridColumn:'1/-1' }}>
           <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>НАЗВАНИЕ *</label>
           <input value={title} onChange={e=>setTitle(e.target.value)} style={inp} placeholder="Название мероприятия" />

@@ -55,12 +55,29 @@
   box-sizing: border-box;
 }
 
+/*
+  iOS Safari: overflow-x:hidden on body alone often kills vertical scroll.
+  Make html the scroll container; body stays overflow-y:visible.
+*/
+html {
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: none;
+}
+
 body {
   background: var(--bg-primary);
   color: var(--text-primary);
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  min-height: 100vh;
+  min-height: 100%;
+  min-height: 100dvh;
+  margin: 0;
+  position: relative;
   overflow-x: hidden;
+  overflow-y: visible;
+  -webkit-overflow-scrolling: touch;
   transition: background 0.35s ease, color 0.35s ease;
 }
 
@@ -458,8 +475,9 @@ body::before {
 
 /* ── UI v2: крупные кнопки и простые экраны ── */
 .cs-app-shell {
-  min-height: 100vh;
-  padding: 20px 20px 88px;
+  min-height: 100%;
+  min-height: 100dvh;
+  padding: 20px 20px calc(88px + env(safe-area-inset-bottom, 0px));
   max-width: 480px;
   margin: 0 auto;
   position: relative;
@@ -674,4 +692,51 @@ body::before {
   border-color: var(--border-glow);
   color: var(--accent-cream);
   background: rgba(200, 168, 110, 0.08);
+}
+
+/* Admin panel: document scroll (iOS-safe), room above Safari chrome */
+.cs-admin-shell {
+  min-height: 100%;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 100%;
+}
+.cs-admin-content {
+  padding: 24px 28px calc(48px + env(safe-area-inset-bottom, 0px));
+  max-width: 100%;
+}
+.cs-parse-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.cs-event-form {
+  max-width: 100%;
+}
+.cs-event-form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.cs-event-form input,
+.cs-event-form textarea,
+.cs-event-form select {
+  max-width: 100%;
+}
+@media (max-width: 640px) {
+  .cs-tabs-simple {
+    padding: 10px 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .cs-admin-content {
+    padding: 16px 16px calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+  .cs-parse-row {
+    flex-direction: column;
+  }
+  .cs-event-form-grid {
+    grid-template-columns: 1fr;
+  }
 }
