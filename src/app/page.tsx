@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef } from 'react';
+import PaletteSwitcher from '@/components/PaletteSwitcher';
 
 declare global { interface Window { Telegram: any; } }
 
@@ -446,6 +447,8 @@ export default function App() {
           </div>
         </div>
       </div>
+
+      <PaletteSwitcher />
     </div>
   );
 

@@ -1,68 +1,5 @@
 @import "tailwindcss";
-
-:root {
-  --bg-primary: #1a1410;
-  --bg-secondary: #221c16;
-  --bg-card: #2a2218;
-  --bg-card-hover: #332a1e;
-  --accent-gold: #d4b278;
-  --accent-warm: #e0b45a;
-  --accent-cream: #f7edd8;
-  --accent-sand: #e8d5b7;
-  --accent-success: #9dca78;
-  --accent-error: #e07070;
-  --accent-warning: #e0b45a;
-  --accent-pearl: #f0e0c4;
-  --text-primary: #f5eee3;
-  --text-muted: #b5a38c;
-  --border-subtle: rgba(200, 168, 110, 0.28);
-  --border-glow: rgba(200, 168, 110, 0.55);
-  --gradient-gold: linear-gradient(135deg, #c8a86e, #d4a853);
-  --gradient-warm: linear-gradient(135deg, #d4a853, #f5e6c8);
-  --gradient-success: linear-gradient(135deg, #8fbc6a, #a8d080);
-  --gradient-error: linear-gradient(135deg, #c75c5c, #d47070);
-  --shadow-gold: 0 4px 24px rgba(200, 168, 110, 0.18);
-  --shadow-warm: 0 4px 24px rgba(212, 168, 83, 0.12);
-  --status-pending-bg: rgba(224, 180, 90, 0.18);
-  --status-pending-border: rgba(224, 180, 90, 0.5);
-  --status-ok-bg: rgba(157, 202, 120, 0.18);
-  --status-ok-border: rgba(157, 202, 120, 0.5);
-  --status-bad-bg: rgba(224, 112, 112, 0.18);
-  --status-bad-border: rgba(224, 112, 112, 0.5);
-  --tap-min: 44px;
-}
-
-/* Light theme */
-[data-theme="light"] {
-  --bg-primary: #faf7f2;
-  --bg-secondary: #f0ebe3;
-  --bg-card: #ffffff;
-  --bg-card-hover: #f8f4ed;
-  --accent-gold: #9a7328;
-  --accent-warm: #a67c1f;
-  --accent-cream: #2c2214;
-  --accent-sand: #7a6548;
-  --accent-success: #3f7d24;
-  --accent-error: #b52e2e;
-  --accent-warning: #a67c1f;
-  --accent-pearl: #e8dcc8;
-  --text-primary: #1f1810;
-  --text-muted: #6b5a45;
-  --border-subtle: rgba(140, 110, 60, 0.28);
-  --border-glow: rgba(140, 110, 60, 0.5);
-  --gradient-gold: linear-gradient(135deg, #b08940, #c49530);
-  --gradient-warm: linear-gradient(135deg, #c49530, #e0b45a);
-  --gradient-success: linear-gradient(135deg, #5a9e35, #6db840);
-  --gradient-error: linear-gradient(135deg, #c44040, #d85555);
-  --shadow-gold: 0 4px 24px rgba(140, 110, 60, 0.14);
-  --shadow-warm: 0 4px 24px rgba(166, 124, 31, 0.1);
-  --status-pending-bg: rgba(166, 124, 31, 0.12);
-  --status-pending-border: rgba(166, 124, 31, 0.45);
-  --status-ok-bg: rgba(63, 125, 36, 0.12);
-  --status-ok-border: rgba(63, 125, 36, 0.4);
-  --status-bad-bg: rgba(181, 46, 46, 0.1);
-  --status-bad-border: rgba(181, 46, 46, 0.4);
-}
+@import "./palettes.css";
 
 * {
   box-sizing: border-box;
@@ -99,9 +36,8 @@ body::before {
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(ellipse at 20% 50%, rgba(200, 168, 110, 0.04) 0%, transparent 60%),
-    radial-gradient(ellipse at 80% 20%, rgba(212, 168, 83, 0.03) 0%, transparent 60%),
-    radial-gradient(ellipse at 50% 80%, rgba(245, 230, 200, 0.02) 0%, transparent 60%);
+    radial-gradient(ellipse at 20% 50%, var(--glow-a, rgba(200, 168, 110, 0.04)) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 20%, var(--glow-b, rgba(212, 168, 83, 0.03)) 0%, transparent 60%);
   pointer-events: none;
   z-index: 0;
   transition: opacity 0.35s ease;
@@ -164,7 +100,7 @@ body::before {
 .warm-btn-primary {
   background: var(--gradient-gold);
   border: none;
-  color: #1a1410;
+  color: var(--btn-on-primary, #1a1410);
   font-weight: 800;
   letter-spacing: 0.04em;
   border-radius: 12px;
@@ -173,12 +109,11 @@ body::before {
   min-height: var(--tap-min);
 }
 .warm-btn-primary:hover {
-  box-shadow: 0 4px 25px rgba(200, 168, 110, 0.4), 0 2px 50px rgba(212, 168, 83, 0.15);
+  box-shadow: var(--shadow-gold);
   transform: translateY(-1px);
 }
 .warm-btn-primary:active { transform: scale(0.98) translateY(0); }
 .warm-btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-[data-theme="light"] .warm-btn-primary { color: #fff; }
 [data-theme="light"] .warm-btn-approve { color: #fff; }
 
 /* Approve/Reject buttons */
@@ -533,10 +468,9 @@ body::before {
 }
 .cs-bottom-nav button.on {
   background: var(--gradient-gold);
-  color: #1a1410;
+  color: var(--btn-on-primary, #1a1410);
   box-shadow: var(--shadow-gold);
 }
-[data-theme="light"] .cs-bottom-nav button.on { color: #fff; }
 .cs-bottom-nav button.off {
   background: var(--bg-secondary);
   color: var(--text-primary);
@@ -664,10 +598,9 @@ body::before {
   border: none;
   border-radius: 12px;
   background: var(--gradient-gold);
-  color: #1a1410;
+  color: var(--btn-on-primary, #1a1410);
   cursor: pointer;
 }
-[data-theme="light"] .cs-btn-create { color: #fff; }
 .cs-event-row {
   display: flex;
   flex-wrap: wrap;

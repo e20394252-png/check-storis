@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState, useRef } from 'react';
+import PaletteSwitcher from '@/components/PaletteSwitcher';
 
 type Org = { id: string; first_name?: string|null; username?: string|null; status: string; isSuperAdmin: boolean };
 type Ev = { id: string; title: string; description?: string|null; date?: string|null; location?: string|null; repostUrl?: string|null; imageUrl?: string|null; price?: number|null; discountPrice?: number|null; isActive: boolean; isFeatured?: boolean; isPaidRepost?: boolean; repostRewardUsdt?: number|null; repostsNeeded?: number|null; repostsFilled?: number; campaignBudget?: number|null; campaignTotal?: number|null; campaignStatus?: string|null; invoiceUrl?: string|null; _count?: { registrations: number } };
@@ -264,6 +265,9 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
             {organizer.isSuperAdmin && <TabBtn id="organizers" label="👥 Организаторы" count={pendingOrgs.length} />}
             {organizer.isSuperAdmin && <TabBtn id="referrals" label="🔗 Рефералы" />}
             {organizer.isSuperAdmin && <TabBtn id="cryptobot" label="💳 CryptoBot" />}
+            <div style={{ width: '100%', marginTop: 8 }}>
+              <PaletteSwitcher />
+            </div>
             <p style={{ width: '100%', fontSize: 12, color: muted, marginTop: 12 }}>Классический UI v1: design/legacy/ui-v1/</p>
           </div>
         )}
