@@ -13,7 +13,7 @@ const gold = 'var(--accent-gold)'; const warm = 'var(--accent-warm)'; const crea
 const success = 'var(--accent-success)'; const error = 'var(--accent-error)'; const muted = 'var(--text-muted)';
 const card = 'var(--bg-card)'; const bg = 'var(--bg-primary)';
 
-const inp: React.CSSProperties = { width:'100%', padding:'10px 14px', background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:8, color:'var(--text-primary)', fontSize:14, outline:'none' };
+const inp: React.CSSProperties = { width:'100%', minHeight:44, padding:'12px 14px', background:'var(--bg-card)', border:'1.5px solid var(--border-subtle)', borderRadius:10, color:'var(--text-primary)', fontSize:15, outline:'none' };
 
 export default function AdminClient({ organizer, onLogout }: { organizer: Org; onLogout: () => void }) {
   const [tab, setTab] = useState('home');
@@ -169,23 +169,23 @@ export default function AdminClient({ organizer, onLogout }: { organizer: Org; o
   return (
     <div className="cs-admin-shell" style={{ background:bg, color:'var(--text-primary)', fontFamily:'Inter,sans-serif', transition:'background 0.35s ease, color 0.35s ease' }}>
       {/* Шапка */}
-      <div style={{ padding:'18px 28px', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:16, flexWrap:'wrap' }}>
+      <div style={{ padding:'16px 20px', borderBottom:'1px solid var(--border-subtle)', display:'flex', alignItems:'center', gap:14, flexWrap:'wrap' }}>
         <div>
-          <div style={{ fontSize:10, color:gold, letterSpacing:'0.1em', opacity:0.6 }}>ПАНЕЛЬ ОРГАНИЗАТОРА</div>
-          <h1 style={{ fontSize:18, fontWeight:800 }}>{organizer.first_name || organizer.username} {organizer.isSuperAdmin && <span style={{ fontSize:11, color:warm }}>👑 Суперадмин</span>}</h1>
+          <div style={{ fontSize:11, color:gold, letterSpacing:'0.08em', fontWeight:700 }}>ПАНЕЛЬ ОРГАНИЗАТОРА</div>
+          <h1 style={{ fontSize:20, fontWeight:800, margin:'2px 0 0' }}>{organizer.first_name || organizer.username} {organizer.isSuperAdmin && <span style={{ fontSize:12, color:warm, fontWeight:700 }}>👑 Суперадмин</span>}</h1>
         </div>
-        <div style={{ marginLeft:'auto', display:'flex', gap:16, alignItems:'center' }}>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:22, fontWeight:800, fontFamily:'monospace', color:warm }}>{pending.length}</div>
-            <div style={{ fontSize:11, color:muted }}>на проверке</div>
+        <div style={{ marginLeft:'auto', display:'flex', gap:12, alignItems:'center', flexWrap:'wrap' }}>
+          <div style={{ textAlign:'right', minWidth:64 }}>
+            <div style={{ fontSize:24, fontWeight:800, fontFamily:'monospace', color:warm, lineHeight:1 }}>{pending.length}</div>
+            <div style={{ fontSize:12, color:muted, fontWeight:600, marginTop:2 }}>на проверке</div>
           </div>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:22, fontWeight:800, fontFamily:'monospace', color:success }}>{approved.length}</div>
-            <div style={{ fontSize:11, color:muted }}>одобрено</div>
+          <div style={{ textAlign:'right', minWidth:64 }}>
+            <div style={{ fontSize:24, fontWeight:800, fontFamily:'monospace', color:success, lineHeight:1 }}>{approved.length}</div>
+            <div style={{ fontSize:12, color:muted, fontWeight:600, marginTop:2 }}>одобрено</div>
           </div>
-          <button onClick={toggleTheme} style={{ padding:'8px 16px', background:'var(--bg-card)', border:'1px solid var(--border-subtle)', borderRadius:8, color:muted, cursor:'pointer', fontSize:16, lineHeight:1, transition:'all 0.25s' }} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>{theme === 'light' ? '🌙' : '☀️'}</button>
+          <button onClick={toggleTheme} style={{ minWidth:44, minHeight:44, padding:'8px 14px', background:'var(--bg-card)', border:'1.5px solid var(--border-subtle)', borderRadius:10, color:'var(--text-primary)', cursor:'pointer', fontSize:18, lineHeight:1, transition:'all 0.25s' }} title={theme === 'light' ? 'Тёмная тема' : 'Светлая тема'}>{theme === 'light' ? '🌙' : '☀️'}</button>
           {organizer.isSuperAdmin && <MigrateButton />}
-          <button onClick={onLogout} style={{ padding:'8px 16px', background:'transparent', border:'1px solid var(--border-subtle)', borderRadius:8, color:muted, cursor:'pointer', fontSize:12 }}>Выйти</button>
+          <button onClick={onLogout} style={{ minHeight:44, padding:'10px 14px', background:'var(--bg-card)', border:'1.5px solid var(--border-subtle)', borderRadius:10, color:'var(--text-primary)', cursor:'pointer', fontSize:13, fontWeight:700 }}>Выйти</button>
         </div>
       </div>
 
@@ -653,7 +653,7 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
       {/* Парсинг ссылки */}
       {!event && (
         <div style={{ marginBottom:20, padding:'16px 18px', background:'rgba(200,168,110,0.04)', border:'1px solid var(--border-subtle)', borderRadius:10 }}>
-          <label style={{ fontSize:11, color:gold, display:'block', marginBottom:8, fontWeight:600 }}>🔗 ВСТАВЬ ССЫЛКУ НА ПОСТ — ЗАПОЛНИМ АВТОМАТИЧЕСКИ</label>
+          <label className="cs-field-label" style={{ color:gold }}>🔗 Вставь ссылку на пост — заполним автоматически</label>
           <div className="cs-parse-row">
             <input
               value={parseUrl} onChange={e => setParseUrl(e.target.value)}
@@ -674,11 +674,11 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
       )}
       <div className="cs-event-form-grid">
         <div style={{ gridColumn:'1/-1' }}>
-          <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>НАЗВАНИЕ *</label>
+          <label className="cs-field-label">Название *</label>
           <input value={title} onChange={e=>setTitle(e.target.value)} style={inp} placeholder="Название мероприятия" />
         </div>
         <div style={{ gridColumn:'1/-1' }}>
-          <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>ОПИСАНИЕ</label>
+          <label className="cs-field-label">Описание</label>
           <div className="format-toolbar">
             <button type="button" onClick={()=>wrapText('b')}><b>B</b></button>
             <button type="button" onClick={()=>wrapText('i')}><i>I</i></button>
@@ -689,27 +689,27 @@ function EventForm({ event, onSave, onCancel, saving }: { event: Ev|null; onSave
           <textarea id="ev-desc" value={desc} onChange={e=>setDesc(e.target.value)} rows={4} style={{ ...inp, resize:'vertical', borderTopLeftRadius:0, borderTopRightRadius:0 }} placeholder="Описание с разметкой: **жирный** __курсив__ ~~зачёркнутый~~" />
         </div>
         <div>
-          <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>ДАТА</label>
+          <label className="cs-field-label">Дата</label>
           <input type="datetime-local" value={date} onChange={e=>setDate(e.target.value)} style={inp} />
         </div>
         <div>
-          <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>МЕСТО</label>
+          <label className="cs-field-label">Место</label>
           <input value={loc} onChange={e=>setLoc(e.target.value)} style={inp} placeholder="Адрес или название" />
         </div>
         <div>
-          <label style={{ fontSize:11, color:gold, display:'block', marginBottom:6 }}>ЦЕНА (₽) *</label>
+          <label className="cs-field-label" style={{ color:gold }}>Цена (₽) *</label>
           <input type="number" value={price} onChange={e=>setPrice(e.target.value)} style={inp} placeholder="5000" required />
         </div>
         <div>
-          <label style={{ fontSize:11, color:gold, display:'block', marginBottom:6 }}>ЦЕНА СО СКИДКОЙ (₽) *</label>
+          <label className="cs-field-label" style={{ color:gold }}>Цена со скидкой (₽) *</label>
           <input type="number" value={discountPrice} onChange={e=>setDiscountPrice(e.target.value)} style={inp} placeholder="3000" required />
         </div>
         <div style={{ gridColumn:'1/-1' }}>
-          <label style={{ fontSize:11, color:gold, display:'block', marginBottom:6 }}>ССЫЛКА НА ПУБЛИКАЦИЮ</label>
+          <label className="cs-field-label" style={{ color:gold }}>Ссылка на публикацию</label>
           <input value={url} onChange={e=>setUrl(e.target.value)} style={inp} placeholder="https://t.me/..." />
         </div>
         <div style={{ gridColumn:'1/-1' }}>
-          <label style={{ fontSize:11, color:muted, display:'block', marginBottom:6 }}>КАРТИНКА</label>
+          <label className="cs-field-label">Картинка</label>
           <input ref={imgRef} type="file" accept="image/*" onChange={onImg} style={{ display:'none' }} />
           {img ? (
             <div>

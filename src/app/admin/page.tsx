@@ -138,8 +138,8 @@ export default function AdminPage() {
   // Не авторизован
   if (!organizer) {
     const inputStyle: React.CSSProperties = {
-      width: '100%', padding: '12px 16px', fontSize: 15, borderRadius: 10,
-      border: '1px solid var(--border-glow)', background: 'var(--bg-card-hover)',
+      width: '100%', minHeight: 48, padding: '14px 16px', fontSize: 16, borderRadius: 12,
+      border: '1.5px solid var(--border-subtle)', background: 'var(--bg-card)',
       color: 'var(--text-primary)', outline: 'none',
     };
 
@@ -151,7 +151,7 @@ export default function AdminPage() {
         {/* ВХОД ПО ЛОГИНУ/ПАРОЛЮ */}
         {(mode === 'login' || mode === 'register') && (
           <div style={{ width: '100%', maxWidth: 340, marginTop: 24 }}>
-            <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 20 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: 15, marginBottom: 20, lineHeight: 1.4 }}>
               {mode === 'login' ? 'Войдите в аккаунт организатора' : 'Создайте аккаунт организатора'}
             </p>
 
@@ -176,18 +176,16 @@ export default function AdminPage() {
               />
 
               {formError && (
-                <div style={{ padding: '10px 14px', background: 'rgba(199,92,92,0.1)', border: '1px solid rgba(199,92,92,0.3)', borderRadius: 8, fontSize: 13, color: 'var(--accent-error)' }}>
-                  {formError}
-                </div>
+                <div className="cs-alert error">{formError}</div>
               )}
 
               <button
                 disabled={formBusy || !loginInput || !passwordInput}
                 onClick={mode === 'login' ? handleLogin : handleRegister}
+                className="warm-btn-primary"
                 style={{
-                  padding: '13px', fontSize: 15, fontWeight: 700, borderRadius: 12, cursor: 'pointer',
-                  background: 'linear-gradient(135deg, var(--accent-gold), var(--accent-warm))', border: 'none',
-                  color: '#1a1410', opacity: formBusy ? 0.6 : 1,
+                  padding: '14px', fontSize: 16, borderRadius: 12, cursor: 'pointer',
+                  opacity: formBusy ? 0.6 : 1,
                 }}
               >
                 {formBusy ? '...' : mode === 'login' ? '🔑 Войти' : '📝 Зарегистрироваться'}
@@ -195,7 +193,7 @@ export default function AdminPage() {
 
               <button
                 onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setFormError(''); }}
-                style={{ background: 'transparent', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', fontSize: 13, marginTop: 4 }}
+                style={{ background: 'transparent', border: 'none', color: 'var(--accent-gold)', cursor: 'pointer', fontSize: 14, fontWeight: 700, marginTop: 4, minHeight: 44 }}
               >
                 {mode === 'login' ? 'Нет аккаунта? Зарегистрироваться' : 'Уже есть аккаунт? Войти'}
               </button>

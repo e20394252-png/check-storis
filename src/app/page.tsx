@@ -87,32 +87,58 @@ export default function App() {
   };
 
   useEffect(() => {
+    let cancelled = false;
     const applyTg = () => {
       const tg = window.Telegram?.WebApp;
       if (!tg) return false;
-      tg.expand(); tg.ready();
-      setInitData(tg.initData || '');
-      return true;
+      try {
+        tg.expand?.();
+        tg.ready?.();
+      } catch {
+        /* stub WebApp outside Telegram */
+      }
+      const data = tg.initData || '';
+      if (data) setInitData(data);
+      return Boolean(data);
     };
     if (applyTg()) return;
     const timers = [
       setTimeout(() => applyTg(), 300),
       setTimeout(() => applyTg(), 800),
       setTimeout(() => applyTg(), 1500),
-      setTimeout(() => setLoading(false), 2000), // fallback: снять загрузку через 2с
+      setTimeout(() => {
+        if (!cancelled) setLoading(false);
+      }, 2000),
     ];
-    return () => timers.forEach(clearTimeout);
+    return () => {
+      cancelled = true;
+      timers.forEach(clearTimeout);
+    };
   }, []);
+
+  useEffect(() => {
+    if (!initData) return;
+    // Не отменяем fetch при Strict Mode remount — иначе initData не меняется
+    // и повторный эффект не стартует, экран зависает на «Загрузка...».
+    fetch('/api/me', { headers: { 'x-telegram-init-data': initData } })
+      .then((r) => r.json())
+      .then((d) => {
+        setMeData(d);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
+  }, [initData]);
 
   const refreshMe = () => {
     if (!initData) return;
     fetch('/api/me', { headers: { 'x-telegram-init-data': initData } })
-      .then(r => r.json())
-      .then(d => { setMeData(d); setLoading(false); })
+      .then((r) => r.json())
+      .then((d) => {
+        setMeData(d);
+        setLoading(false);
+      })
       .catch(() => setLoading(false));
   };
-
-  useEffect(() => { if (initData) refreshMe(); }, [initData]);
 
   const loadWallet = () => {
     if (!initData) return;
@@ -189,7 +215,7 @@ export default function App() {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 16 }}>
         <div style={{ width: 40, height: 40, border: '3px solid rgba(200,168,110,0.2)', borderTopColor: 'var(--accent-gold)', borderRadius: '50%' }} className="spin" />
-        <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>Загрузка...</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 15, fontWeight: 600 }}>Загрузка...</div>
       </div>
     );
   }
@@ -256,8 +282,8 @@ export default function App() {
 
         {/* Поле для ссылки на сторис */}
         <div style={{ marginBottom: 12 }}>
-          <label style={{ fontSize: 11, color: 'var(--text-muted)', display: 'block', marginBottom: 6 }}>🔗 Ссылка на вашу сторис {meData?.events.find(e => e.id === eventId)?.isPaidRepost ? <span style={{ color:'var(--accent-error)' }}>(обязательно)</span> : '(необязательно)'}</label>
-          <input value={storyUrl} onChange={e => setStoryUrl(e.target.value)} placeholder="https://t.me/..." style={{ width: '100%', padding: '10px 14px', background: 'rgba(200,168,110,0.05)', border: '1px solid rgba(200,168,110,0.18)', borderRadius: 8, color: 'var(--text-primary)', fontSize: 13, outline: 'none' }} />
+          <label className="cs-field-label">🔗 Ссылка на вашу сторис {meData?.events.find(e => e.id === eventId)?.isPaidRepost ? <span style={{ color:'var(--accent-error)' }}>(обязательно)</span> : '(необязательно)'}</label>
+          <input value={storyUrl} onChange={e => setStoryUrl(e.target.value)} placeholder="https://t.me/..." className="warm-input" style={{ width: '100%', padding: '12px 14px' }} />
         </div>
 
         {!selectedImage ? (
@@ -293,13 +319,13 @@ export default function App() {
     <div className="animate-fade-in">
       <div style={{ textAlign:'center', marginBottom:24 }}>
         <div style={{ fontSize:40, marginBottom:8 }}>👤</div>
-        <div style={{ fontSize:20, fontWeight:800, color:'var(--accent-cream)' }}>{user?.first_name || 'Пользователь'}</div>
-        {user?.username && <div style={{ fontSize:13, color:'var(--text-muted)' }}>@{user.username}</div>}
+        <div style={{ fontSize:22, fontWeight:800, color:'var(--accent-cream)' }}>{user?.first_name || 'Пользователь'}</div>
+        {user?.username && <div style={{ fontSize:15, color:'var(--text-muted)', fontWeight:600 }}>@{user.username}</div>}
       </div>
 
       {/* Balance card */}
-      <div style={{ background:'linear-gradient(135deg, rgba(212,168,83,0.12), rgba(200,168,110,0.06))', border:'1px solid rgba(212,168,83,0.3)', borderRadius:16, padding:'20px 24px', marginBottom:20, textAlign:'center' }}>
-        <div style={{ fontSize:11, color:'var(--text-muted)', marginBottom:8, fontWeight:600, letterSpacing:'0.06em' }}>💰 БАЛАНС</div>
+      <div style={{ background:'linear-gradient(135deg, rgba(212,168,83,0.12), rgba(200,168,110,0.06))', border:'1.5px solid rgba(212,168,83,0.35)', borderRadius:16, padding:'20px 24px', marginBottom:20, textAlign:'center' }}>
+        <div className="cs-field-label" style={{ marginBottom:8 }}>💰 Баланс</div>
         <div style={{ fontSize:32, fontWeight:800, color:'var(--accent-cream)', letterSpacing:'-0.02em' }}>
           {walletLoading ? '...' : `${walletData?.balance?.toFixed(2) || '0.00'} USDT`}
         </div>
@@ -439,7 +465,7 @@ export default function App() {
             borderColor: ev.isFeatured ? 'rgba(212,168,83,0.5)' : regStatus === 'approved' ? 'rgba(143,188,106,0.3)' : regStatus === 'pending' ? 'rgba(212,168,83,0.25)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.2)' : undefined,
           }}>
             <div style={{ marginBottom: 14 }}>
-              <p className="muted" style={{ marginBottom: 10, fontSize: 12 }}>Ваши шаги</p>
+              <p className="cs-section-label">Ваши шаги</p>
               <div className={`cs-step ${stepRepostDone || regStatus !== 'none' ? 'done' : ''}`}>
                 <span className="cs-step-num">{stepRepostDone || regStatus !== 'none' ? '✓' : '1'}</span>
                 <span><strong>Репост</strong> — откройте публикацию</span>
@@ -484,13 +510,9 @@ export default function App() {
             )}
 
             {/* Заголовок + статус */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
-              <div style={{ fontWeight: 700, fontSize: 16, lineHeight: 1.2, flex: 1, paddingRight: 10, color: 'var(--accent-cream)' }}>{ev.title}</div>
-              <span style={{
-                fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 4, whiteSpace: 'nowrap',
-                background: regStatus === 'approved' ? 'rgba(143,188,106,0.12)' : regStatus === 'pending' ? 'rgba(212,168,83,0.12)' : regStatus === 'rejected' ? 'rgba(199,92,92,0.1)' : 'rgba(200,168,110,0.08)',
-                color: meta.color, border: `1px solid ${meta.color}40`,
-              }}>{meta.icon} {meta.label.toUpperCase()}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, marginBottom: 12 }}>
+              <div style={{ fontWeight: 800, fontSize: 17, lineHeight: 1.25, flex: 1, color: 'var(--accent-cream)' }}>{ev.title}</div>
+              <span className={`cs-status-badge is-${regStatus}`}>{meta.icon} {meta.label}</span>
             </div>
 
             {ev.description && <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 10, lineHeight: 1.5 }}>{renderRichText(ev.description)}</div>}
@@ -507,7 +529,7 @@ export default function App() {
             )}
 
             {regStatus === 'rejected' && (
-              <div style={{ padding: '10px 14px', background: 'rgba(199,92,92,0.07)', borderRadius: 8, marginBottom: 10, fontSize: 12, color: 'var(--accent-error)' }}>
+              <div className="cs-alert error" style={{ marginBottom: 12 }}>
                 ❌ Скриншот не прошёл{reg?.adminNote ? `: ${reg.adminNote}` : ''}
               </div>
             )}
@@ -574,7 +596,7 @@ export default function App() {
       ) : (
         <>
           {user?.first_name && (
-            <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 8px' }}>
+            <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: '0 0 10px' }}>
               Привет, <b style={{ color: 'var(--accent-cream)' }}>{user.first_name}</b>
             </p>
           )}
@@ -603,8 +625,8 @@ export default function App() {
 
               {focusEv && (
                 <>
-                  <h2 style={{ fontSize: 26, fontWeight: 800, margin: '0 0 6px', lineHeight: 1.2, color: 'var(--accent-cream)' }}>{focusEv.title}</h2>
-                  <p style={{ fontSize: 14, color: 'var(--text-muted)', margin: '0 0 16px' }}>
+                  <h2 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 8px', lineHeight: 1.25, color: 'var(--accent-cream)' }}>{focusEv.title}</h2>
+                  <p style={{ fontSize: 15, color: 'var(--text-muted)', margin: '0 0 16px', lineHeight: 1.4 }}>
                     {[formatDate(focusEv.date), focusEv.location, focusEv.isPaidRepost && focusEv.repostRewardUsdt ? `награда ${focusEv.repostRewardUsdt} USDT` : null]
                       .filter(Boolean)
                       .join(' · ')}
